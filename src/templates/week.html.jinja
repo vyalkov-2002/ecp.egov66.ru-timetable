@@ -1,0 +1,49 @@
+{#
+SPDX-FileCopyrightText: 2025 Matvey Vyalkov
+
+SPDX-License-Identifier: WTFPL
+#}
+
+{% set start_date = week.monday.strftime("%x") %}
+{% set end_date = week.sunday.strftime("%x") %}
+
+<!DOCTYPE html>
+<html lang="ru">
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<meta name="generator" content="https://altlinux.space/acme-corp/ecp.egov66.ru-timetable" />
+<link rel="stylesheet" href="../styles.css" />
+<title>Расписание группы {{ group }} с {{ start_date }} по {{ end_date }}</title>
+<header>
+  <h1>
+    <span class="line">Расписание группы <a href=".">{{ group }}</a></span>
+    <span class="line">с {{ start_date }} по {{ end_date }}</span>
+  </h1>
+</header>
+<main>
+  {% for day in timetable %}
+  <h2>{{ (week.monday + timedelta(days=loop.index0)).strftime("%A") }}</h2>
+  <table>
+    {% for course in day|sort %}
+    <tr>
+      <td class="classroom">{{ course.classroom }}</td>
+      <td>{{ course.name }}</td>
+    </tr>
+    {% else %}
+    {% for _ in range(3) %}
+    <tr role="presentation">
+      <td class="classroom"></td>
+      <td></td>
+    </tr>
+    {% endfor %}
+    {% endfor %}
+  </table>
+  {% endfor %}
+</main>
+<footer>
+  <nav>
+    <a href="{{ (week - 1).week_id }}.html">← Предыдущая</a>
+    <a href="{{ (week + 1).week_id }}.html">Следующая →</a>
+  </nav>
+</footer>
+</html>
