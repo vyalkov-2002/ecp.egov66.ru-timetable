@@ -35,7 +35,7 @@ def write_timetable(group: str, *, offset: int = 0) -> None:
     )
     template = jinja_env.get_template("week.html.jinja")
 
-    week = get_week_dates(offset)
+    week = get_week_dates() + offset
     out_file = Path(group) / f"{week.week_id}.html"
     out_file.parent.mkdir(exist_ok=True)
 

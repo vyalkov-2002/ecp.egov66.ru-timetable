@@ -1,0 +1,10 @@
+# SPDX-License-Identifier: CC0-1.0
+# SPDX-FileCopyrightText: 2025 Matvey Vyalkov
+
+version = 1
+
+[[annotations]]
+path = "tests/data/*.html"
+precedence = "aggregate"
+SPDX-FileCopyrightText = "NONE"
+SPDX-License-Identifier = "CC0-1.0"

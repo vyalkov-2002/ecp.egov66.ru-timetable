@@ -1,0 +1,22 @@
+# SPDX-License-Identifier: WTFPL
+# SPDX-FileCopyrightText: 2025 Matvey Vyalkov
+# No warranty
+
+from datetime import date
+
+from egov66_timetable.types import Week
+
+monday = date.fromisocalendar(2000, 2, 1)
+sunday = date.fromisocalendar(2000, 2, 7)
+
+
+def test_week_add():
+    week = Week(monday, sunday) + 1
+    assert week.monday == date.fromisocalendar(2000, 3, 1)
+    assert week.sunday == date.fromisocalendar(2000, 3, 7)
+
+
+def test_week_sub():
+    week = Week(monday, sunday) - 1
+    assert week.monday == date.fromisocalendar(2000, 1, 1)
+    assert week.sunday == date.fromisocalendar(2000, 1, 7)

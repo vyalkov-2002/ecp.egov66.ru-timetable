@@ -33,14 +33,13 @@ def get_csrf_token(soup: BeautifulSoup) -> str:
     raise CSRFTokenNotFound
 
 
-def get_week_dates(offset: int = 0) -> Week:
+def get_week_dates() -> Week:
     """
-    :param offset: смещение относительно текущей недели (``-1`` — предыдущая
-        неделя, ``+1`` — следующая)
+    :returns: текущая неделя
     """
 
     today = date.today()
-    monday = today + timedelta(days=-today.weekday(), weeks=offset)
+    monday = today - timedelta(days=today.weekday())
     sunday = monday + timedelta(days=6)
 
     return Week(monday, sunday)

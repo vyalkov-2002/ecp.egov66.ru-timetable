@@ -99,8 +99,8 @@ dependency_groups = [
     "typecheck",
 ]
 commands = [
-    #["pytest", "-vv", "{tty:--color=yes}"],
-    ["mypy", "egov66_timetable"],
+    ["pytest", "-vv", "{tty:--color=yes}"],
+    ["mypy", "egov66_timetable", "tests"],
 ]
 
 [tool.tox.env.lint]
@@ -110,7 +110,7 @@ skip_install = true
 dependency_groups = ["lint"]
 commands = [
     ["reuse", "lint"],
-    ["pyflakes", "egov66_timetable"],
-    ["pycodestyle", "egov66_timetable"],
+    ["pyflakes", "egov66_timetable", "tests"],
+    ["pycodestyle", "egov66_timetable", "tests"],
     ["bandit", "-c", "pyproject.toml", "-r", "egov66_timetable"],
 ]
