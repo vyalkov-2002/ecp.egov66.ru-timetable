@@ -49,10 +49,10 @@ lint = [
 Source = "https://altlinux.space/acme-corp/ecp.egov66.ru-timetable"
 
 [project.scripts]
-ecp-egov66-timetable = "timetable:main"
+ecp-egov66-timetable = "egov66_timetable.__main__:main"
 
 [tool.flit.module]
-name = "timetable"
+name = "egov66_timetable"
 
 [tool.ruff]
 line-length = 100
@@ -77,10 +77,6 @@ module = [
 ]
 ignore_missing_imports = true
 
-[tool.bandit]
-skips = [
-]
-
 [tool.bumpversion]
 current_version = "0.0.0"
 commit = true
@@ -104,7 +100,7 @@ dependency_groups = [
 ]
 commands = [
     #["pytest", "-vv", "{tty:--color=yes}"],
-    ["mypy", "src"],
+    ["mypy", "egov66_timetable"],
 ]
 
 [tool.tox.env.lint]
@@ -114,7 +110,7 @@ skip_install = true
 dependency_groups = ["lint"]
 commands = [
     ["reuse", "lint"],
-    ["pyflakes", "src"],
-    ["pycodestyle", "src"],
-    ["bandit", "-c", "pyproject.toml", "-r", "src"],
+    ["pyflakes", "egov66_timetable"],
+    ["pycodestyle", "egov66_timetable"],
+    ["bandit", "-c", "pyproject.toml", "-r", "egov66_timetable"],
 ]
