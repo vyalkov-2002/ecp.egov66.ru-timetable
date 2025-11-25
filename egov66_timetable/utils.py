@@ -33,7 +33,7 @@ def get_csrf_token(soup: BeautifulSoup) -> str:
     raise CSRFTokenNotFound
 
 
-def get_week_dates() -> Week:
+def get_current_week() -> Week:
     """
     :returns: текущая неделя
     """

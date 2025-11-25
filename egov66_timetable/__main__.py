@@ -12,7 +12,7 @@ from jinja2 import Environment, PackageLoader, select_autoescape
 
 import egov66_timetable
 from egov66_timetable.client import Client
-from egov66_timetable.utils import get_week_dates
+from egov66_timetable.utils import get_current_week
 
 # Выводить дни недели в русской локали
 locale.setlocale(locale.LC_TIME, "ru_RU.utf8")
@@ -35,7 +35,7 @@ def write_timetable(group: str, *, offset: int = 0) -> None:
     )
     template = jinja_env.get_template("week.html.jinja")
 
-    week = get_week_dates() + offset
+    week = get_current_week() + offset
     out_file = Path(group) / f"{week.week_id}.html"
     out_file.parent.mkdir(exist_ok=True)
 
