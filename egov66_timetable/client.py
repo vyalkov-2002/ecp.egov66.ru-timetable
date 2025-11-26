@@ -24,8 +24,9 @@ class Client:
     offset: int
     settings: Settings
 
-    _csrf_token: str | None = None
-    _data: dict | None = None
+    _csrf_token: str | None
+    _data: dict | None
+    _params_hash: int
 
     def __init__(self, group: str, *, settings: Settings, offset: int = 0):
         """
@@ -39,15 +40,18 @@ class Client:
         self.settings = settings
         self.offset = offset
 
+        self._csrf_token = None
+        self._data = None
+        self._params_hash = 0
+
     @property
-    def cookies(self) -> dict[str, str]:
+    def dirty(self) -> bool:
         """
-        Cookie-файлы для запроса.
+        Полученные данные не соответствуют текущим параметрам.
         """
 
-        return {
-            "edinyi_lk_session": self.settings.get("session_id", "")
-        }
+        current = self._compute_params_hash()
+        return current != self._params_hash
 
     @property
     def csrf_token(self) -> str:
@@ -70,6 +74,13 @@ class Client:
             self._fetch_initial_data()
             assert self._data is not None
         return self._data
+
+    def _compute_params_hash(self) -> int:
+        return (
+            hash(self.group)
+            + hash(self.offset)
+            + hash(tuple(sorted(self.settings["cookies"].items())))
+        )
 
     def _call_livewire_method(self, method: str, *params: str) -> dict:
         endpoint = (
@@ -97,8 +108,8 @@ class Client:
         }
 
         return (
-            httpx.post(endpoint,
-                       cookies=self.cookies, headers=headers, json=payload)
+            httpx.post(endpoint, headers=headers, json=payload,
+                       cookies=self.settings["cookies"])
                  .raise_for_status()
                  .json()
         )
@@ -122,8 +133,8 @@ class Client:
 
     def _fetch_initial_data(self) -> None:
         schedule_url = self.settings["instance"] + "/schedule/groups"
-        page_html = (
-            httpx.get(schedule_url, cookies=self.cookies)
+        page_html= (
+            httpx.get(schedule_url, cookies=self.settings["cookies"])
                  .raise_for_status()
                  .text
         )
@@ -145,11 +156,14 @@ class Client:
         """
 
         self._fetch_initial_data()
-        self._set_group()
+        if self.data["serverMemo"]["data"]["group"] != self.group:
+            self._set_group()
         for _ in range(self.offset, 0):  # offset < 0
             self._go_back()
         for _ in range(self.offset):  # offset > 0
             self._go_forward()
+
+        self._params_hash = self._compute_params_hash()
 
     def make_timetable(self) -> Timetable:
         """
@@ -159,6 +173,9 @@ class Client:
         """
 
         result: Timetable = [{} for _ in range(7)]
+
+        if self.dirty:
+            self.fetch_timetable()
 
         events: dict[str, list[Lesson]]
         events = self.data["serverMemo"]["data"]["events"]

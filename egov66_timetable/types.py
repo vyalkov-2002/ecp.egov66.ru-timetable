@@ -4,7 +4,7 @@
 
 from dataclasses import dataclass
 from datetime import date, timedelta
-from typing import TypedDict, Required
+from typing import TypedDict, Required, NotRequired
 
 type Timetable = list[dict[int, tuple[str, str]]]
 
@@ -65,16 +65,16 @@ class Lesson(TypedDict, total=False):
     numberPair: Required[int]
 
 
-class Settings(TypedDict, total=False):
+class Settings(TypedDict):
     """
     Настройки в формате JSON.
     """
 
     #: Адрес сайта личного кабинета.
-    instance: Required[str]
+    instance: str
 
-    #: Идентификатор сеанса в личном кабинете (из cookie).
-    session_id: str
+    #: Cookie-файлы.
+    cookies: dict[str, str]
 
     #: Путь, по которому браузер будет запрашивать таблицу стилей.
-    css_path: str
+    css_path: NotRequired[str]

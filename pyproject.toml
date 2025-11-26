@@ -54,6 +54,11 @@ ecp-egov66-timetable = "egov66_timetable.__main__:main"
 [tool.flit.module]
 name = "egov66_timetable"
 
+[tool.flit.sdist]
+include = [
+    "tests/",
+]
+
 [tool.ruff]
 line-length = 100
 
