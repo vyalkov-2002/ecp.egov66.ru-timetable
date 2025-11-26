@@ -7,7 +7,6 @@
 """
 
 import json
-import os
 import random
 import string
 
@@ -15,7 +14,7 @@ import httpx
 from bs4 import BeautifulSoup
 
 from egov66_timetable.exceptions import InitialDataNotFound
-from egov66_timetable.types import Lesson, Timetable
+from egov66_timetable.types import Lesson, Settings, Timetable
 from egov66_timetable.utils import get_csrf_token
 
 
@@ -23,42 +22,70 @@ class Client:
 
     group: str
     offset: int
+    settings: Settings
 
-    _instance: str
-    _cookies: dict[str, str]
     _csrf_token: str | None = None
     _data: dict | None = None
 
-    def __init__(self, group: str, *, offset: int = 0):
+    def __init__(self, group: str, *, settings: Settings, offset: int = 0):
         """
         :param group: номер группы
+        :param settings: настройки
         :param offset: смещение относительно текущей недели (``-1`` — предыдущая
             неделя, ``+1`` — следующая)
         """
 
         self.group = group
+        self.settings = settings
         self.offset = offset
 
-        self._instance = os.environ["ECP_EGOV66_INSTANCE"]
-        self._cookies = {
-            "edinyi_lk_session": os.environ["ECP_EGOV66_SESSION_ID"]
+    @property
+    def cookies(self) -> dict[str, str]:
+        """
+        Cookie-файлы для запроса.
+        """
+
+        return {
+            "edinyi_lk_session": self.settings.get("session_id", "")
         }
 
-    def _call_livewire_method(self, method: str, *params: str) -> dict:
-        if self._data is None or self._csrf_token is None:
-            raise ValueError("Initial data has not been fetched")
+    @property
+    def csrf_token(self) -> str:
+        """
+        Токен CSRF для запроса.
+        """
 
-        endpoint = f"{self._instance}/livewire/message/schedule-group-grid"
+        if self._csrf_token is None:
+            self._fetch_initial_data()
+            assert self._csrf_token is not None
+        return self._csrf_token
+
+    @property
+    def data(self) -> dict:
+        """
+        Полученные данные.
+        """
+
+        if self._data is None:
+            self._fetch_initial_data()
+            assert self._data is not None
+        return self._data
+
+    def _call_livewire_method(self, method: str, *params: str) -> dict:
+        endpoint = (
+            self.settings["instance"]
+            + "/livewire/message/schedule-group-grid"
+        )
         signature = "".join(
             random.choices(string.ascii_lowercase + string.digits, k=4)
         )
         headers: dict[str, str] = {
-            "X-CSRF-TOKEN": self._csrf_token,
+            "X-CSRF-TOKEN": self.csrf_token,
             "X-Livewire": "true",
         }
         payload = {
-            "fingerprint": self._data["fingerprint"],
-            "serverMemo": self._data["serverMemo"],
+            "fingerprint": self.data["fingerprint"],
+            "serverMemo": self.data["serverMemo"],
             "updates": [{
                 "type": "callMethod",
                 "payload": {
@@ -69,22 +96,20 @@ class Client:
             }]
         }
 
-        return httpx.post(endpoint,
-            cookies=self._cookies,
-            headers=headers,
-            json=payload
-        ).raise_for_status().json()
+        return (
+            httpx.post(endpoint,
+                       cookies=self.cookies, headers=headers, json=payload)
+                 .raise_for_status()
+                 .json()
+        )
 
     def _perform_data_update(self, method: str, *params: str) -> None:
-        if self._data is None:
-            raise ValueError("Initial data has not been fetched")
-
         diff = self._call_livewire_method(method, *params)
-        self._data["serverMemo"]["data"].update(
+        self.data["serverMemo"]["data"].update(
             diff["serverMemo"]["data"]
         )
-        self._data["serverMemo"]["checksum"] = diff["serverMemo"]["checksum"]
-        self._data["serverMemo"]["htmlHash"] = diff["serverMemo"]["htmlHash"]
+        self.data["serverMemo"]["checksum"] = diff["serverMemo"]["checksum"]
+        self.data["serverMemo"]["htmlHash"] = diff["serverMemo"]["htmlHash"]
 
     def _set_group(self) -> None:
         self._perform_data_update("set", self.group)
@@ -96,10 +121,12 @@ class Client:
         self._perform_data_update("addWeek")
 
     def _fetch_initial_data(self) -> None:
-        schedule_url = f"{self._instance}/schedule/groups"
-        page_html = httpx.get(schedule_url,
-            cookies=self._cookies
-        ).raise_for_status().text
+        schedule_url = self.settings["instance"] + "/schedule/groups"
+        page_html = (
+            httpx.get(schedule_url, cookies=self.cookies)
+                 .raise_for_status()
+                 .text
+        )
 
         soup = BeautifulSoup(page_html, "lxml")
         self._csrf_token = get_csrf_token(soup)
@@ -131,14 +158,10 @@ class Client:
         :returns: отсортированное расписание
         """
 
-        if self._data is None:
-            self.fetch_timetable()
-            assert self._data is not None
-
         result: Timetable = [{} for _ in range(7)]
 
         events: dict[str, list[Lesson]]
-        events = self._data["serverMemo"]["data"]["events"]
+        events = self.data["serverMemo"]["data"]["events"]
         for cell in events:
             lesson = events[cell][0]
 

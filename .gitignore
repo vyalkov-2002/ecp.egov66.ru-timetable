@@ -1,6 +1,7 @@
 # SPDX-License-Identifier: CC0-1.0
 # SPDX-FileCopyrightText: 2025 Matvey Vyalkov
 
+settings.json
 .tox
 
 __pycache__

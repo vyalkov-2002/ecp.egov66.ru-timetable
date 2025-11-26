@@ -63,3 +63,18 @@ class Lesson(TypedDict, total=False):
 
     #: Номер пары, начиная с единицы.
     numberPair: Required[int]
+
+
+class Settings(TypedDict, total=False):
+    """
+    Настройки в формате JSON.
+    """
+
+    #: Адрес сайта личного кабинета.
+    instance: Required[str]
+
+    #: Идентификатор сеанса в личном кабинете (из cookie).
+    session_id: str
+
+    #: Путь, по которому браузер будет запрашивать таблицу стилей.
+    css_path: str
