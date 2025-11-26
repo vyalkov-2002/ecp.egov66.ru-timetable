@@ -133,8 +133,9 @@ class Client:
 
     def _fetch_initial_data(self) -> None:
         schedule_url = self.settings["instance"] + "/schedule/groups"
-        page_html= (
-            httpx.get(schedule_url, cookies=self.settings["cookies"])
+        page_html = (
+            httpx.get(schedule_url,
+                      cookies=self.settings["cookies"])
                  .raise_for_status()
                  .text
         )
