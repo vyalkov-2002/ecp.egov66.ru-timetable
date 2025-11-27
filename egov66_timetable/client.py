@@ -133,14 +133,16 @@ class Client:
 
     def _fetch_initial_data(self) -> None:
         schedule_url = self.settings["instance"] + "/schedule/groups"
-        page_html = (
+        response = (
             httpx.get(schedule_url,
-                      cookies=self.settings["cookies"])
-                 .raise_for_status()
-                 .text
+                      cookies=self.settings["cookies"]).raise_for_status()
         )
 
-        soup = BeautifulSoup(page_html, "lxml")
+        self.settings["cookies"]["edinyi_lk_session"] = (
+            response.cookies["edinyi_lk_session"]
+        )
+
+        soup = BeautifulSoup(response.text, "lxml")
         self._csrf_token = get_csrf_token(soup)
 
         for tag in soup.find_all("div", attrs={"wire:initial-data": True}):

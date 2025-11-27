@@ -5,7 +5,10 @@
 import sys
 
 from egov66_timetable import write_timetable
-from egov66_timetable.utils import read_settings
+from egov66_timetable.utils import (
+    read_settings,
+    write_settings,
+)
 
 
 def main() -> None:
@@ -19,6 +22,7 @@ def main() -> None:
 
     settings = read_settings()
     write_timetable(group, offset=offset, settings=settings)
+    write_settings(settings)
 
 
 if __name__ == "__main__":

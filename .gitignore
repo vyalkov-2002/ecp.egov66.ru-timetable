@@ -2,11 +2,12 @@
 # SPDX-FileCopyrightText: 2025 Matvey Vyalkov
 
 settings.json
-.tox
+*.html
 
 __pycache__
 *.py[co]
 
+.tox
 docs/_build
 dist
 venv

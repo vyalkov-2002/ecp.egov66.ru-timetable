@@ -53,6 +53,6 @@ def write_timetable(group: str, *, settings: Settings, offset: int = 0) -> None:
         timetable=timetable,
         week=week,
         timedelta=timedelta,
-    )
+    ).lstrip()
     with open(out_file, "w") as out:
         out.write(html)
