@@ -27,6 +27,7 @@ class Client:
     _csrf_token: str | None
     _data: dict | None
     _params_hash: int
+    _has_timetable: bool
 
     def __init__(self, group: str, *, settings: Settings, offset: int = 0):
         """
@@ -43,6 +44,7 @@ class Client:
         self._csrf_token = None
         self._data = None
         self._params_hash = 0
+        self._has_timetable = True
 
     @property
     def dirty(self) -> bool:
@@ -119,8 +121,12 @@ class Client:
         self.data["serverMemo"]["data"].update(
             diff["serverMemo"]["data"]
         )
-        self.data["serverMemo"]["checksum"] = diff["serverMemo"]["checksum"]
-        self.data["serverMemo"]["htmlHash"] = diff["serverMemo"]["htmlHash"]
+
+        for key in ("checksum", "htmlHash"):
+            if key in diff["serverMemo"]:
+                self.data["serverMemo"][key] = diff["serverMemo"][key]
+
+        self._has_timetable = "events" in diff["serverMemo"]["data"]
 
     def _set_group(self) -> None:
         self._perform_data_update("set", self.group)
@@ -180,8 +186,10 @@ class Client:
         if self.dirty:
             self.fetch_timetable()
 
-        events: dict[str, list[Lesson]]
-        events = self.data["serverMemo"]["data"]["events"]
+        events: dict[str, list[Lesson]] = {}
+        if self._has_timetable:
+            events = self.data["serverMemo"]["data"]["events"]
+
         for cell in events:
             lesson = events[cell][0]
 
