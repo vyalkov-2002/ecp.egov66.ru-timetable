@@ -9,35 +9,41 @@ SPDX-License-Identifier: WTFPL
 
 <!DOCTYPE html>
 <html lang="ru">
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width,initial-scale=1" />
-<meta name="generator" content="https://altlinux.space/acme-corp/ecp.egov66.ru-timetable" />
-<link rel="stylesheet" href="{{ css_path }}" />
-<title>Расписание группы {{ group }} с {{ start_date }} по {{ end_date }}</title>
-<header>
-  <h1>
-    <span class="line">Расписание группы <a href="..">{{ group }}</a></span>
-    <span class="line">с {{ start_date }} по {{ end_date }}</span>
-  </h1>
-</header>
-<main>
-  {% for day in timetable %}
-  <h2>{{ (week.monday + timedelta(days=loop.index0)).strftime("%A") }}</h2>
-  <table>
-    {% for lesson_num in range(day|max|default(2) + 1) %}
-    <tr>
-      {% set classroom, name = day.get(lesson_num, ["нет", ""]) %}
-      <td class="classroom">{{ classroom }}</td>
-      <td>{{ name }}</td>
-    </tr>
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta name="generator" content="https://altlinux.space/acme-corp/ecp.egov66.ru-timetable" />
+  <link rel="stylesheet" href="{{ css_path }}" />
+  <title>Расписание группы {{ group }} с {{ start_date }} по {{ end_date }}</title>
+  {% block head_extra %}{% endblock %}
+</head>
+<body>
+  <header>
+    <h1>
+      <span class="line">Расписание группы <a href="..">{{ group }}</a></span>
+      <span class="line">с {{ start_date }} по {{ end_date }}</span>
+    </h1>
+  </header>
+  <main>
+    {% for day in timetable %}
+    <h2>{{ (week.monday + timedelta(days=loop.index0)).strftime("%A") }}</h2>
+    <table>
+      {% for lesson_num in range(day|max|default(2) + 1) %}
+      <tr>
+        {% set classroom, name = day.get(lesson_num, ["нет", ""]) %}
+        <td class="classroom">{{ classroom }}</td>
+        <td>{{ name }}</td>
+      </tr>
+      {% endfor %}
+    </table>
     {% endfor %}
-  </table>
-  {% endfor %}
-</main>
-<footer>
-  <nav>
-    <a href="{{ (week - 1).week_id }}.html">← Предыдущая</a>
-    <a href="{{ (week + 1).week_id }}.html">Следующая →</a>
-  </nav>
-</footer>
+  </main>
+  <footer>
+    <nav>
+      <a href="{{ (week - 1).week_id }}.html">← Предыдущая</a>
+      <a href="{{ (week + 1).week_id }}.html">Следующая →</a>
+    </nav>
+  </footer>
+  {% block body_extra %}{% endblock %}
+</body>
 </html>
