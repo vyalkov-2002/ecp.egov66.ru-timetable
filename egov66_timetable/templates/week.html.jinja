@@ -7,6 +7,9 @@ SPDX-License-Identifier: WTFPL
 {% set start_date = week.monday.strftime("%x") %}
 {% set end_date = week.sunday.strftime("%x") %}
 
+{% set prev_week_link = (week - 1).week_id ~ ".html" %}
+{% set next_week_link = (week + 1).week_id ~ ".html" %}
+
 <!DOCTYPE html>
 <html lang="ru">
 <head>
@@ -22,6 +25,9 @@ SPDX-License-Identifier: WTFPL
     <h1>
       <span class="line">Расписание группы <a href="..">{{ group }}</a></span>
       <span class="line">с {{ start_date }} по {{ end_date }}</span>
+      <span class="line">
+        (<a href="{{ next_week_link }}">вперёд</a> | <a href="{{ prev_week_link }}">назад</a>)
+      </span>
     </h1>
   </header>
   <main>
@@ -40,8 +46,8 @@ SPDX-License-Identifier: WTFPL
   </main>
   <footer>
     <nav>
-      <a href="{{ (week - 1).week_id }}.html">← Предыдущая</a>
-      <a href="{{ (week + 1).week_id }}.html">Следующая →</a>
+      <a href="{{ prev_week_link }}">← Предыдущая</a>
+      <a href="{{ next_week_link }}">Следующая →</a>
     </nav>
   </footer>
   {% block body_extra %}{% endblock %}
