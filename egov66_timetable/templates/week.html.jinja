@@ -30,16 +30,20 @@ SPDX-License-Identifier: WTFPL
       </span>
     </h1>
   </header>
-  <main>
+  <main>	
     {% for day in timetable %}
     <h2>{{ (week.monday + timedelta(days=loop.index0)).strftime("%A") }}</h2>
     <table>
-      {% for lesson_num in range(day|max|default(2) + 1) %}
+      {% for classroom, name, rowspan in day %}
       <tr>
-        {% set classroom, name = day.get(lesson_num, ["нет", ""]) %}
         <td class="classroom">{{ classroom }}</td>
-        <td>{{ name }}</td>
+        <td rowspan={{ rowspan }}>{{ name }}</td>
       </tr>
+      {% for _ in range(rowspan - 1) %}
+      <tr>
+        <td class="classroom">{{ classroom }}</td>
+      </tr>
+      {% endfor %}
       {% endfor %}
     </table>
     {% endfor %}
