@@ -70,4 +70,4 @@ def write_settings(settings: Settings) -> None:
     """
 
     with open("settings.json", "w") as file:
-        json.dump(settings, file, indent=2)
+        json.dump(settings, file, indent=2, ensure_ascii=False)

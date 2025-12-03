@@ -65,6 +65,21 @@ class Lesson(TypedDict, total=False):
     numberPair: Required[int]
 
 
+class Alias(TypedDict):
+    """
+    Настройка, которая позволяет дать более короткое имя учебной дисциплине.
+    """
+
+    #: Название учебной дисциплины как в личном кабинете.
+    discipline: str
+
+    #: Номер аудитории.
+    classroom: NotRequired[str]
+
+    #: Новое название.
+    rename: str
+
+
 class Settings(TypedDict):
     """
     Настройки в формате JSON.
@@ -78,3 +93,6 @@ class Settings(TypedDict):
 
     #: Путь, по которому браузер будет запрашивать таблицу стилей.
     css_path: NotRequired[str]
+
+    #: Список переименований.
+    aliases: NotRequired[list[Alias]]

@@ -14,7 +14,7 @@ import httpx
 from bs4 import BeautifulSoup
 
 from egov66_timetable.exceptions import InitialDataNotFound
-from egov66_timetable.types import Lesson, Settings, Timetable
+from egov66_timetable.types import Alias, Lesson, Settings, Timetable
 from egov66_timetable.utils import get_csrf_token
 
 
@@ -28,6 +28,9 @@ class Client:
     _data: dict | None
     _params_hash: int
     _has_timetable: bool
+
+    # {(classroom, discipline): rename}
+    _aliases: dict[tuple[str | None, str], str]
 
     def __init__(self, group: str, *, settings: Settings, offset: int = 0):
         """
@@ -45,6 +48,8 @@ class Client:
         self._data = None
         self._params_hash = 0
         self._has_timetable = True
+
+        self._load_aliases()
 
     @property
     def dirty(self) -> bool:
@@ -77,10 +82,23 @@ class Client:
             assert self._data is not None
         return self._data
 
+    def _load_aliases(self) -> None:
+        self._aliases = {}
+
+        alias: Alias
+        for alias in self.settings.get("aliases", []):
+            discipline = alias.get("discipline")
+            classroom = alias.get("classroom")
+            rename = alias.get("rename")
+            match (discipline, rename):
+                case (str(), str()):
+                    self._aliases[(classroom, discipline)] = rename
+
     def _compute_params_hash(self) -> int:
         return (
             hash(self.group)
             + hash(self.offset)
+            + hash(self.settings["instance"])
             + hash(tuple(sorted(self.settings["cookies"].items())))
         )
 
@@ -199,6 +217,14 @@ class Client:
             ).split(" ")[0]
             if len(classroom) > 3:
                 classroom = ""
+
+            if (rename := self._aliases.get((classroom, name))) is not None:
+                # Специфичное переименование: требует совпадения аудитории и
+                # названия учебной дисциплины.
+                name = rename
+            elif (rename := self._aliases.get((None, name))) is not None:
+                # Общее переименование: достаточно лишь названия.
+                name = rename
 
             day_num = lesson["dayWeekNum"]
             lesson_num = abs(lesson["numberPair"] - 1)
