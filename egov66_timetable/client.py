@@ -218,7 +218,11 @@ class Client:
             if len(classroom) > 3:
                 classroom = ""
 
-            if (rename := self._aliases.get((classroom, name))) is not None:
+            if (rename := lesson.get("comment")) is not None:
+                # Если в возвращенных данных уже есть комментарий, используем
+                # его в качестве названия и пропускаем алиасы.
+                name = rename
+            elif (rename := self._aliases.get((classroom, name))) is not None:
                 # Специфичное переименование: требует совпадения аудитории и
                 # названия учебной дисциплины.
                 name = rename
