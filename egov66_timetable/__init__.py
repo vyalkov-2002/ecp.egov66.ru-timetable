@@ -52,14 +52,14 @@ def collapse_timetable(timetable: Timetable) -> CollapsedTimetable:
     for day in range(len(timetable)):
         if len(timetable[day]) != 0:
             for lesson_num in range(max(timetable[day]) + 1):
-                this_lesson = timetable[day].get(lesson_num)
-                classroom, name = this_lesson or ["нет", ""]
+                this_lesson = timetable[day].get(lesson_num) or (None, ("нет", ""))
+                classroom, name = this_lesson[1]
 
                 if (
                     # если это первая итерация
                     len(result[day]) == 0
                     # если вместо пары "окно"
-                    or this_lesson is None
+                    or this_lesson[0] is None
                     # если эта пара такая же, как прошлая
                     or (classroom, name) != result[day][-1][:2]
                 ):
@@ -101,8 +101,8 @@ def write_timetable(group: str, *, settings: Settings, offset: int = 0,
     out_file = Path(group) / f"{week.week_id}.html"
     out_file.parent.mkdir(exist_ok=True)
 
-    client = Client(group, settings=settings, offset=offset)
-    timetable = client.make_timetable()
+    client = Client(settings=settings)
+    timetable = client.make_timetable(group, offset=offset)
 
     html = template.render(
         css_path=settings.get("css_path", "../egov66_timetable/static/styles.css"),

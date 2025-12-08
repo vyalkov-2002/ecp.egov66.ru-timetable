@@ -2,17 +2,19 @@
 # SPDX-FileCopyrightText: 2025 Matvey Vyalkov
 # No warranty
 
+from uuid import uuid4
+
 from egov66_timetable import collapse_timetable
 from egov66_timetable.types import Timetable
 
 
 def test_collapse_timetable():
     day = {
-        0: ("100", "А"),
-        1: ("100", "А"),
-        2: ("200", "Б"),
-        3: ("100", "А"),
-        4: ("100", "А"),
+        0: (str(uuid4()), ("100", "А")),
+        1: (str(uuid4()), ("100", "А")),
+        2: (str(uuid4()), ("200", "Б")),
+        3: (str(uuid4()), ("100", "А")),
+        4: (str(uuid4()), ("100", "А")),
     }
     timetable: Timetable = [day.copy() for _ in range(7)]
 
@@ -28,9 +30,9 @@ def test_collapse_timetable():
 
 def test_collapse_timetable_with_space_in_the_middle():
     day = {
-        0: ("100", "А"),
-        2: ("200", "Б"),
-        3: ("300", "В"),
+        0: (str(uuid4()), ("100", "А")),
+        2: (str(uuid4()), ("200", "Б")),
+        3: (str(uuid4()), ("300", "В")),
     }
     timetable: Timetable = [day.copy() for _ in range(7)]
 
@@ -47,9 +49,9 @@ def test_collapse_timetable_with_space_in_the_middle():
 
 def test_collapse_timetable_with_space_in_the_beginning():
     day = {
-        1: ("100", "А"),
-        2: ("200", "Б"),
-        3: ("300", "В"),
+        1: (str(uuid4()), ("100", "А")),
+        2: (str(uuid4()), ("200", "Б")),
+        3: (str(uuid4()), ("300", "В")),
     }
     timetable: Timetable = [day.copy() for _ in range(7)]
 

@@ -6,7 +6,8 @@ from dataclasses import dataclass
 from datetime import date, timedelta
 from typing import TypedDict, NotRequired
 
-type Timetable = list[dict[int, tuple[str, str]]]
+type Lesson = tuple[str, tuple[str, str]]
+type Timetable = list[dict[int, Lesson]]
 
 
 @dataclass(frozen=True)
@@ -44,10 +45,13 @@ class Week:
         raise NotImplementedError
 
 
-class Lesson(TypedDict):
+class LessonDict(TypedDict):
     """
     Пара в расписании.
     """
+
+    #: UUID объекта.
+    id: str
 
     #: Название аудитории.
     classroom: str | None

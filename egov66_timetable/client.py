@@ -14,14 +14,18 @@ import httpx
 from bs4 import BeautifulSoup
 
 from egov66_timetable.exceptions import InitialDataNotFound
-from egov66_timetable.types import Alias, Lesson, Settings, Timetable
+from egov66_timetable.types import (
+    Alias,
+    Lesson,
+    LessonDict,
+    Settings,
+    Timetable
+)
 from egov66_timetable.utils import get_csrf_token
 
 
 class Client:
 
-    group: str
-    offset: int
     settings: Settings
 
     _csrf_token: str | None
@@ -32,17 +36,12 @@ class Client:
     # {(classroom, discipline): rename}
     _aliases: dict[tuple[str | None, str], str]
 
-    def __init__(self, group: str, *, settings: Settings, offset: int = 0):
+    def __init__(self, settings: Settings):
         """
-        :param group: номер группы
         :param settings: настройки
-        :param offset: смещение относительно текущей недели (``-1`` — предыдущая
-            неделя, ``+1`` — следующая)
         """
 
-        self.group = group
         self.settings = settings
-        self.offset = offset
 
         self._csrf_token = None
         self._data = None
@@ -51,14 +50,14 @@ class Client:
 
         self._load_aliases()
 
-    @property
-    def dirty(self) -> bool:
-        """
-        Полученные данные не соответствуют текущим параметрам.
-        """
-
-        current = self._compute_params_hash()
-        return current != self._params_hash
+    def _compute_params_hash(self, *, group: str | None = None,
+                             offset: int | None = None) -> int:
+        return (
+            hash(group or self._current_group)
+            + hash(offset or self._current_offset)
+            + hash(self.settings["instance"])
+            + hash(tuple(sorted(self.settings["cookies"].items())))
+        )
 
     @property
     def csrf_token(self) -> str:
@@ -71,16 +70,24 @@ class Client:
             assert self._csrf_token is not None
         return self._csrf_token
 
-    @property
-    def data(self) -> dict:
+    def _get_data(self) -> dict:
         """
-        Полученные данные.
+        :returns: текущие данные
         """
 
         if self._data is None:
             self._fetch_initial_data()
             assert self._data is not None
         return self._data
+
+    @property
+    def _current_group(self) -> str:
+        return self._get_data()["serverMemo"]["data"]["group"]
+
+    @property
+    def _current_offset(self) -> int:
+        data: dict = self._get_data()["serverMemo"]["data"]
+        return data.get("addNumWeek", 0) - data.get("minusNumWeek", 0)
 
     def _load_aliases(self) -> None:
         self._aliases = {}
@@ -93,14 +100,6 @@ class Client:
             match (discipline, rename):
                 case (str(), str()):
                     self._aliases[(classroom, discipline)] = rename
-
-    def _compute_params_hash(self) -> int:
-        return (
-            hash(self.group)
-            + hash(self.offset)
-            + hash(self.settings["instance"])
-            + hash(tuple(sorted(self.settings["cookies"].items())))
-        )
 
     def _call_livewire_method(self, method: str, *params: str) -> dict:
         endpoint = (
@@ -115,8 +114,8 @@ class Client:
             "X-Livewire": "true",
         }
         payload = {
-            "fingerprint": self.data["fingerprint"],
-            "serverMemo": self.data["serverMemo"],
+            "fingerprint": self._get_data()["fingerprint"],
+            "serverMemo": self._get_data()["serverMemo"],
             "updates": [{
                 "type": "callMethod",
                 "payload": {
@@ -136,18 +135,18 @@ class Client:
 
     def _perform_data_update(self, method: str, *params: str) -> None:
         diff = self._call_livewire_method(method, *params)
-        self.data["serverMemo"]["data"].update(
+        self._get_data()["serverMemo"]["data"].update(
             diff["serverMemo"]["data"]
         )
 
         for key in ("checksum", "htmlHash"):
             if key in diff["serverMemo"]:
-                self.data["serverMemo"][key] = diff["serverMemo"][key]
+                self._get_data()["serverMemo"][key] = diff["serverMemo"][key]
 
         self._has_timetable = "events" in diff["serverMemo"]["data"]
 
-    def _set_group(self) -> None:
-        self._perform_data_update("set", self.group)
+    def _set_group(self, group: str) -> None:
+        self._perform_data_update("set", group)
 
     def _go_back(self) -> None:
         self._perform_data_update("minusWeek")
@@ -177,63 +176,73 @@ class Client:
         else:
             raise InitialDataNotFound
 
-    def fetch_timetable(self) -> None:
+    def fetch_timetable(self, group: str, *, offset: int = 0) -> None:
         """
         Скачивает страницу с расписанием, выбирает нужную группу и неделю.
+
+        :param group: номер группы
+        :param offset: смещение относительно текущей недели (``-1`` — предыдущая
+            неделя, ``+1`` — следующая)
         """
 
         self._fetch_initial_data()
-        if self.data["serverMemo"]["data"]["group"] != self.group:
-            self._set_group()
-        for _ in range(self.offset, 0):  # offset < 0
+        if self._current_group != group:
+            self._set_group(group)
+        for _ in range(offset, 0):  # offset < 0
             self._go_back()
-        for _ in range(self.offset):  # offset > 0
+        for _ in range(offset):  # offset > 0
             self._go_forward()
 
         self._params_hash = self._compute_params_hash()
 
-    def make_timetable(self) -> Timetable:
+    def _make_lesson(self, lesson: LessonDict) -> Lesson:
+        name = lesson.get("discipline") or ""
+        classroom = (
+            lesson.get("place") or lesson.get("classroom") or ""
+        ).split(" ")[0]
+
+        if len(classroom) > 3:
+            classroom = ""
+
+        if (rename := lesson.get("comment")) is not None:
+            # Если в возвращенных данных уже есть комментарий, используем
+            # его в качестве названия и пропускаем алиасы.
+            name = rename
+        elif (rename := self._aliases.get((classroom, name))) is not None:
+            # Специфичное переименование: требует совпадения аудитории и
+            # названия учебной дисциплины.
+            name = rename
+        elif (rename := self._aliases.get((None, name))) is not None:
+            # Общее переименование: достаточно лишь названия.
+            name = rename
+
+        return (lesson["id"], (classroom, name))
+
+    def make_timetable(self, group: str, *, offset: int = 0) -> Timetable:
         """
         Составляет расписание на неделю.
 
+        :param group: номер группы
+        :param offset: смещение относительно текущей недели (``-1`` — предыдущая
+            неделя, ``+1`` — следующая)
         :returns: отсортированное расписание
         """
 
         result: Timetable = [{} for _ in range(7)]
 
-        if self.dirty:
-            self.fetch_timetable()
+        if self._compute_params_hash(group=group, offset=offset) != self._params_hash:
+            self.fetch_timetable(group, offset=offset)
 
-        events: dict[str, list[Lesson]] = {}
+        events: dict[str, list[LessonDict]] = {}
         if self._has_timetable:
-            events = self.data["serverMemo"]["data"]["events"]
+            events = self._get_data()["serverMemo"]["data"]["events"]
 
         for cell in events:
             lesson = events[cell][0]
-
-            name = lesson.get("discipline") or ""
-            classroom = (
-                lesson.get("place") or lesson.get("classroom") or ""
-            ).split(" ")[0]
-            if len(classroom) > 3:
-                classroom = ""
-
-            if (rename := lesson.get("comment")) is not None:
-                # Если в возвращенных данных уже есть комментарий, используем
-                # его в качестве названия и пропускаем алиасы.
-                name = rename
-            elif (rename := self._aliases.get((classroom, name))) is not None:
-                # Специфичное переименование: требует совпадения аудитории и
-                # названия учебной дисциплины.
-                name = rename
-            elif (rename := self._aliases.get((None, name))) is not None:
-                # Общее переименование: достаточно лишь названия.
-                name = rename
-
             day_num = lesson["dayWeekNum"]
             lesson_num = abs(lesson["numberPair"] - 1)
 
-            result[day_num][lesson_num] = (classroom, name)
+            result[day_num][lesson_num] = self._make_lesson(lesson)
 
         # Если на выходных ничего нет, удаляем лишние дни.
         for _ in range(2):
