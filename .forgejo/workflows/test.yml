@@ -1,0 +1,27 @@
+# SPDX-FileCopyrightText: 2025 Matvey Vyalkov
+#
+# SPDX-License-Identifier: CC0-1.0
+
+on:
+  workflow_dispatch:
+  push:
+  schedule:
+    - cron: '0 0 * * mon'
+
+jobs:
+  test:
+    runs-on: docker
+    container:
+      image: fedorapython/fedora-python-tox:latest
+
+    steps:
+      - name: Checkout repository
+        run: >
+          git clone --depth 1 -b ${{ forgejo.ref_name }}
+          ${{ forgejo.server_url }}/${{ forgejo.repository }}
+          repo-checkout
+
+      - name: Run Tox
+        working-directory: repo-checkout
+        run: |
+          tox -c pyproject.toml run
