@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: WTFPL
+# SPDX-License-Identifier: EUPL-1.2
 # SPDX-FileCopyrightText: 2025 Matvey Vyalkov
 # No warranty
 

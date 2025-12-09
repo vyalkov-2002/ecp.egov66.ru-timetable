@@ -12,7 +12,7 @@ authors = [
 ]
 dynamic = ["version", "description"]
 readme = "README.md"
-license = "WTFPL"
+license = "EUPL-1.2"
 license-files = ["LICENSES/*"]
 requires-python = ">=3.12"
 dependencies = [
@@ -21,7 +21,7 @@ dependencies = [
     "jinja2",
 ]
 classifiers = [
-    "Development Status :: 2 - Pre-Alpha",
+    "Development Status :: 3 - Alpha",
     "Intended Audience :: Education",
     "Programming Language :: Python :: 3 :: Only",
     "Natural Language :: Russian",
@@ -83,20 +83,15 @@ module = [
 disallow_untyped_defs = false
 check_untyped_defs = true
 
-[[tool.mypy.overrides]]
-module = [
-]
-ignore_missing_imports = true
-
 [tool.bumpversion]
 current_version = "0.0.0"
 commit = true
 tag = true
 tag_name = "{new_version}"
-sign_tags = true
+sign_tags = false
 
 [[tool.bumpversion.files]]
-filename = "timetable.py"
+filename = "egov66_timetable/__init__.py"
 
 [tool.tox]
 requires = ["tox>=4.22"]
