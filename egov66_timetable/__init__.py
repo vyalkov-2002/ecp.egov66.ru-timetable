@@ -7,6 +7,7 @@
 """
 
 import locale
+import logging
 from datetime import timedelta
 from pathlib import Path
 
@@ -20,6 +21,8 @@ __version__ = "0.0.0"
 
 # classroom, name, rowspan
 type CollapsedTimetable = list[list[tuple[str, str, int]]]
+
+logger = logging.getLogger(__name__)
 
 
 def load_template() -> jinja2.Template:
@@ -78,39 +81,51 @@ def collapse_timetable(timetable: Timetable) -> CollapsedTimetable:
     return result
 
 
-def write_timetable(group: str, *, settings: Settings, offset: int = 0,
+def write_timetable(groups: str | list[str], *,
+                    settings: Settings,
+                    offset_range: range = range(1),
                     template: jinja2.Template | None = None,
                     **template_args: object) -> None:
     """
     Получает и сохраняет расписание на неделю в HTML-файл.
 
-    :param group: номер группы
+    :param groups: номера групп
     :param settings: настройки
-    :param offset: смещение относительно текущей недели (``-1`` — предыдущая
-        неделя, ``+1`` — следующая)
+    :param offset_range: интервал смещений относительно текущей недели (``-1`` —
+        предыдущая неделя, ``+1`` — следующая)
+    :param templtate: свой шаблон Jinja2
     :param template_args: дополнительные параметры для шаблона
     """
 
+    if isinstance(groups, str):
+        groups = [groups]
     if template is None:
         template = load_template()
 
     # Выводить дни недели в русской локали
     locale.setlocale(locale.LC_TIME, "ru_RU.utf8")
 
-    week = get_current_week() + offset
-    out_file = Path(group) / f"{week.week_id}.html"
-    out_file.parent.mkdir(exist_ok=True)
+    css_path = settings.get("css_path", "../egov66_timetable/static/styles.css")
+    current_week = get_current_week()
 
-    client = Client(settings=settings)
-    timetable = client.make_timetable(group, offset=offset)
+    client = Client(settings)
+    for offset in offset_range:
+        week = current_week + offset
+        for group in groups:
+            out_file = Path(group) / f"{week.week_id}.html"
+            out_file.parent.mkdir(exist_ok=True)
 
-    html = template.render(
-        css_path=settings.get("css_path", "../egov66_timetable/static/styles.css"),
-        group=group,
-        timetable=collapse_timetable(timetable),
-        week=week,
-        timedelta=timedelta,
-        **template_args,
-    ).lstrip()
-    with open(out_file, "w") as out:
-        out.write(html)
+            logger.info("Загрузка расписания для группы %s на неделю %s",
+                        group, week.week_id)
+            timetable = client.make_timetable(group, offset=offset)
+
+            html = template.render(
+                css_path=css_path,
+                group=group,
+                timetable=collapse_timetable(timetable),
+                week=week,
+                timedelta=timedelta,
+                **template_args,
+            ).lstrip()
+            with open(out_file, "w") as out:
+                out.write(html)

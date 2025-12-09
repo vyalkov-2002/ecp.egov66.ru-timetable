@@ -185,12 +185,14 @@ class Client:
             неделя, ``+1`` — следующая)
         """
 
-        self._fetch_initial_data()
+        if self._data is None:
+            self._fetch_initial_data()
+
         if self._current_group != group:
             self._set_group(group)
-        for _ in range(offset, 0):  # offset < 0
+        for _ in range(offset - self._current_offset, 0):  # offset < 0
             self._go_back()
-        for _ in range(offset):  # offset > 0
+        for _ in range(offset - self._current_offset):  # offset > 0
             self._go_forward()
 
         self._params_hash = self._compute_params_hash()
