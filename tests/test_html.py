@@ -4,7 +4,7 @@
 
 from uuid import uuid4
 
-from egov66_timetable import collapse_timetable
+from egov66_timetable.callbacks.html import collapse_timetable
 from egov66_timetable.types import Timetable
 
 

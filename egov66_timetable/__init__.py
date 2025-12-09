@@ -8,124 +8,63 @@
 
 import locale
 import logging
-from datetime import timedelta
-from pathlib import Path
-
-import jinja2
+from collections.abc import Callable
 
 from egov66_timetable.client import Client
-from egov66_timetable.types import Settings, Timetable
+from egov66_timetable.types import Settings, Timetable, Week
 from egov66_timetable.utils import get_current_week
 
 __version__ = "0.0.0"
 
-# classroom, name, rowspan
-type CollapsedTimetable = list[list[tuple[str, str, int]]]
+# timetable, group, week
+type TimetableCallback = Callable[[Timetable, str, Week], None]
 
 logger = logging.getLogger(__name__)
 
 
-def load_template() -> jinja2.Template:
+def get_timetable(groups: str | list[str], callbacks: list[TimetableCallback],
+                  *, settings: Settings, offset_range: range = range(1)) -> None:
     """
-    :returns: шаблон расписания
-    """
-
-    jinja_env = jinja2.Environment(
-        loader=jinja2.PackageLoader("egov66_timetable"),
-        autoescape=jinja2.select_autoescape(),
-        trim_blocks=True,
-        lstrip_blocks=True,
-    )
-    return jinja_env.get_template("week.html.jinja")
-
-
-def collapse_timetable(timetable: Timetable) -> CollapsedTimetable:
-    """
-    Преобразует расписание в пригодное для рендеринга в формате таблицы, а
-    именно переводит его из формата ``{номер_пары: (аудитория, предмет)}`` в
-    формат ``(аудитория, предмет, число_повторов)``.
-
-    Если расписания на день нет, вставляет вместо него три пустые строки.
-
-    :param timetable: исходное расписание
-    """
-
-    result: CollapsedTimetable = [[] for _ in range(len(timetable))]
-    # pylint: disable=consider-using-enumerate
-    for day in range(len(timetable)):
-        if len(timetable[day]) != 0:
-            for lesson_num in range(max(timetable[day]) + 1):
-                this_lesson = timetable[day].get(lesson_num) or (None, ("нет", ""))
-                classroom, name = this_lesson[1]
-
-                if (
-                    # если это первая итерация
-                    len(result[day]) == 0
-                    # если вместо пары "окно"
-                    or this_lesson[0] is None
-                    # если эта пара такая же, как прошлая
-                    or (classroom, name) != result[day][-1][:2]
-                ):
-                    result[day].append(
-                        (classroom, name, 1)
-                    )
-                else:
-                    # Увеличиваем rowspan на 1
-                    result[day][-1] = (
-                        *result[day][-1][:2], result[day][-1][2] + 1
-                    )
-        else:
-            # Расписания еще нет, добавляем 3 пустые строки.
-            result[day].extend([("", "", 1)] * 3)
-
-    return result
-
-
-def write_timetable(groups: str | list[str], *,
-                    settings: Settings,
-                    offset_range: range = range(1),
-                    template: jinja2.Template | None = None,
-                    **template_args: object) -> None:
-    """
-    Получает и сохраняет расписание на неделю в HTML-файл.
+    Получает расписание и вызывает коллбэк-функции.
 
     :param groups: номера групп
+    :param callbacks: функции обратного вызова
     :param settings: настройки
     :param offset_range: интервал смещений относительно текущей недели (``-1`` —
         предыдущая неделя, ``+1`` — следующая)
-    :param templtate: свой шаблон Jinja2
-    :param template_args: дополнительные параметры для шаблона
     """
-
-    if isinstance(groups, str):
-        groups = [groups]
-    if template is None:
-        template = load_template()
 
     # Выводить дни недели в русской локали
     locale.setlocale(locale.LC_TIME, "ru_RU.utf8")
 
-    css_path = settings.get("css_path", "../egov66_timetable/static/styles.css")
-    current_week = get_current_week()
+    if isinstance(groups, str):
+        groups = [groups]
 
+    current_week = get_current_week()
     client = Client(settings)
     for offset in offset_range:
         week = current_week + offset
         for group in groups:
-            out_file = Path(group) / f"{week.week_id}.html"
-            out_file.parent.mkdir(exist_ok=True)
-
             logger.info("Загрузка расписания для группы %s на неделю %s",
                         group, week.week_id)
             timetable = client.make_timetable(group, offset=offset)
+            for callback in callbacks:
+                callback(timetable, group, week)
 
-            html = template.render(
-                css_path=css_path,
-                group=group,
-                timetable=collapse_timetable(timetable),
-                week=week,
-                timedelta=timedelta,
-                **template_args,
-            ).lstrip()
-            with open(out_file, "w") as out:
-                out.write(html)
+
+def write_timetable(groups: str | list[str], *,
+                    settings: Settings, offset_range: range = range(1)) -> None:
+    """
+    Получает расписание и записывает его в HTML-файлы.
+
+    :param groups: номера групп
+    :param callbacks: функции обратного вызова
+    :param settings: настройки
+    :param offset_range: интервал смещений относительно текущей недели (``-1`` —
+        предыдущая неделя, ``+1`` — следующая)
+    """
+
+    from egov66_timetable.callbacks.html import html_callback
+
+    get_timetable(groups, [html_callback(settings)],
+                  settings=settings, offset_range=offset_range)

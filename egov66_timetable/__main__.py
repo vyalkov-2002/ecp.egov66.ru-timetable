@@ -21,7 +21,8 @@ def main() -> None:
     offset = int(args[1]) if len(args) == 2 else 0
 
     settings = read_settings()
-    write_timetable(group, offset=offset, settings=settings)
+    write_timetable(group, settings=settings,
+                    offset_range=range(offset, offset+1))
     write_settings(settings)
 
 
