@@ -6,6 +6,7 @@ from dataclasses import dataclass
 from datetime import date, timedelta
 from typing import TypedDict, NotRequired
 
+# (id, (classroom, name))
 type Lesson = tuple[str, tuple[str, str]]
 type Timetable = list[dict[int, Lesson]]
 

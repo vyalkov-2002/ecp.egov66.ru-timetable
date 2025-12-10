@@ -3,6 +3,7 @@
 # No warranty
 
 import json
+from collections.abc import Collection, Sequence
 from datetime import date, timedelta
 from pathlib import Path
 
@@ -13,6 +14,47 @@ from egov66_timetable.exceptions import (
     SessionExpired,
 )
 from egov66_timetable.types import Settings, Week
+
+
+def flatten(seq: Sequence) -> list:
+    """
+    Превращает последовательность с несколькими уровнями вложенности в
+    одноуровневый список.
+
+    :param seq: последовательность
+    :returns: одноуровневый список
+
+    >>> flatten([1, (2, 3)])
+    [1, 2, 3]
+    >>> flatten([1, 2, []])
+    [1, 2]
+    >>> flatten([])
+    []
+    >>> flatten([1, {2, 3}])
+    Traceback (most recent call last):
+        ...
+    TypeError: 'set' не является последовательностью
+    >>> flatten([{1, 2}, 3])
+    Traceback (most recent call last):
+      ...
+    TypeError: 'set' не является последовательностью
+    """
+
+    err_msg = "'{0.__name__}' не является последовательностью"
+    if not isinstance(seq, Sequence):
+        raise TypeError(err_msg.format(type(seq)))
+
+    match seq:
+        case []:
+            return []
+        case [[*head], *tail]:
+            return [*flatten(head), *flatten(tail)]
+        case [head, *tail]:
+            if isinstance(head, Collection) and not isinstance(head, Sequence):
+                raise TypeError(err_msg.format(type(head)))
+            return [head, *flatten(tail)]
+        case _:
+            raise ValueError
 
 
 def get_csrf_token(soup: BeautifulSoup) -> str:

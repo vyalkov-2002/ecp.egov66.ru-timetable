@@ -2,6 +2,7 @@
 # SPDX-FileCopyrightText: 2025 Matvey Vyalkov
 
 settings.json
+*.db
 *.html
 
 __pycache__
