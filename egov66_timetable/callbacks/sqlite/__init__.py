@@ -20,10 +20,48 @@ logger = logging.getLogger(__name__)
 
 
 def create_db(cur: sqlite3.Cursor | sqlite3.Connection) -> sqlite3.Cursor:
+    """
+    Создает базу данных и индексы.
+    """
+
     sql_file: Path = cast(
         Path, files("egov66_timetable.callbacks.sqlite").joinpath("schema.sql")
     )
     return cur.executescript(sql_file.read_text())
+
+
+def load_timetable(cur: sqlite3.Cursor, *, group: str, week: Week) -> Timetable:
+    """
+    Загружает расписание из базы данных.
+
+    :param group: номер группы
+    :param week: неделя
+    :returns: расписание на неделю для группы
+    """
+
+    cur.execute(
+        """
+        SELECT
+          id, classroom, name, day_num, lesson_num
+        FROM
+          lesson
+        WHERE
+          group_id = ? AND week_id = ? AND is_deleted = FALSE
+        """,
+        [group, week.week_id]
+    )
+
+    result: Timetable = [{} for _ in range(7)]
+    for lesson_id, classroom, name, day_num, lesson_num in cur.fetchall():
+        result[day_num][lesson_num] = (lesson_id, (classroom, name))
+
+    # Если на выходных ничего нет, удаляем лишние дни.
+    for _ in range(2):
+        if len(result[-1]) > 0:
+            break
+        del result[-1]
+
+    return result
 
 
 def sqlite_callback(cur: sqlite3.Cursor) -> TimetableCallback:
