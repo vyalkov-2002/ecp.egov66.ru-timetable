@@ -9,8 +9,6 @@
 import logging
 import sqlite3
 from importlib.resources import files
-from pathlib import Path
-from typing import cast
 
 from egov66_timetable import TimetableCallback
 from egov66_timetable.types import Timetable, Week
@@ -24,10 +22,12 @@ def create_db(cur: sqlite3.Cursor | sqlite3.Connection) -> sqlite3.Cursor:
     Создает базу данных и индексы.
     """
 
-    sql_file: Path = cast(
-        Path, files("egov66_timetable.callbacks.sqlite").joinpath("schema.sql")
+    sql_script: str = (
+        files("egov66_timetable.callbacks.sqlite")
+        .joinpath("schema.sql")
+        .read_text()
     )
-    return cur.executescript(sql_file.read_text())
+    return cur.executescript(sql_script)
 
 
 def load_timetable(cur: sqlite3.Cursor, *, group: str, week: Week) -> Timetable:

@@ -2,6 +2,8 @@
 --
 -- SPDX-License-Identifier: EUPL-1.2
 
+PRAGMA journal_mode=WAL;
+
 CREATE TABLE IF NOT EXISTS lesson(
     -- UUID пары
     id TEXT PRIMARY KEY NOT NULL,
