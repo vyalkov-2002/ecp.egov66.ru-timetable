@@ -107,7 +107,7 @@ def sqlite_callback(cur: sqlite3.Cursor) -> TimetableCallback:
                     WHERE
                       id = ?
                     """,
-                    deleted_lesson_ids
+                    [(lesson_id,) for lesson_id in deleted_lesson_ids]
                 )
 
             # 4. Найдем пары, которые были добавлены.
