@@ -123,15 +123,22 @@ def sqlite_callback(cur: sqlite3.Cursor) -> TimetableCallback:
                      day_num, lesson_num]
                     for lesson_num in added_lesson_ids.values()
                 ]
-                cur.executemany(
+
+                sql: str = (
                     """
                     INSERT INTO
                       lesson(id, classroom, name, group_id, week_id, day_num, lesson_num)
                     VALUES
                       (?, ?, ?, ?, ?, ?, ?)
-                    """,
-                    data
+                    """
                 )
+
+                if not __debug__:
+                    cur.executemany(sql, data)
+                else:
+                    for lesson in data:
+                        logger.debug("Добавляю новую запись в таблицу lesson: %s", lesson)
+                        cur.execute(sql, lesson)
 
         if total_added > 0:
             logger.info("Новых записей в БД: %d", total_added)
