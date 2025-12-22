@@ -18,7 +18,9 @@ requires-python = ">=3.12"
 dependencies = [
     "beautifulsoup4[lxml]",
     "httpx",
+    "iuliia",
     "jinja2",
+    "pydantic>=2.7.0,<3",
 ]
 classifiers = [
     "Development Status :: 3 - Alpha",
@@ -34,6 +36,7 @@ keywords = ["college", "timetable"]
 [dependency-groups]
 test = [
     "pytest",
+    "pytest-cases",
 ]
 typecheck = [
     "mypy",
@@ -74,6 +77,11 @@ skips = [
 [tool.mypy]
 disallow_untyped_defs = true
 no_implicit_optional = true
+plugins = ["pydantic.mypy"]
+
+[[tool.mypy.overrides]]
+module = ["iuliia.*"]
+follow_untyped_imports = true
 
 [[tool.mypy.overrides]]
 module = [

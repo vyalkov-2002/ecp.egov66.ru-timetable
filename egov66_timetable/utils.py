@@ -2,18 +2,29 @@
 # SPDX-FileCopyrightText: 2025 Matvey Vyalkov
 # No warranty
 
+import functools
 import json
 from collections.abc import Collection, Sequence
 from datetime import date, timedelta
 from pathlib import Path
 
 from bs4 import BeautifulSoup
+from pydantic import TypeAdapter
 
 from egov66_timetable.exceptions import (
     CSRFTokenNotFound,
     SessionExpired,
 )
 from egov66_timetable.types import Settings, Week
+
+
+@functools.cache
+def get_type_adapter[T](t: type[T]) -> TypeAdapter[T]:
+    """
+    Создает и кэширует экземпляр :class:`TypeAdapter`.
+    """
+
+    return TypeAdapter(t)
 
 
 def flatten(seq: Sequence) -> list:
@@ -84,9 +95,8 @@ def get_current_week() -> Week:
 
     today = date.today()
     monday = today - timedelta(days=today.weekday())
-    sunday = monday + timedelta(days=6)
 
-    return Week(monday, sunday)
+    return Week(monday)
 
 
 def read_settings() -> Settings:
@@ -101,7 +111,7 @@ def read_settings() -> Settings:
     if not file.is_file():
         raise FileNotFoundError("Файл settings.json не найден")
 
-    return json.loads(file.read_text())
+    return get_type_adapter(Settings).validate_json(file.read_bytes())
 
 
 def write_settings(settings: Settings) -> None:

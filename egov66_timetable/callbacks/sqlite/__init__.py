@@ -12,7 +12,10 @@ from importlib.resources import files
 
 from egov66_timetable import TimetableCallback
 from egov66_timetable.types import Timetable, Week
-from egov66_timetable.utils import flatten
+from egov66_timetable.utils import (
+    flatten,
+    get_type_adapter,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -61,7 +64,7 @@ def load_timetable(cur: sqlite3.Cursor, *, group: str, week: Week) -> Timetable:
             break
         del result[-1]
 
-    return result
+    return get_type_adapter(Timetable).validate_python(result)
 
 
 def sqlite_callback(cur: sqlite3.Cursor) -> TimetableCallback:

@@ -4,72 +4,65 @@
 
 from uuid import uuid4
 
-from egov66_timetable.callbacks.html import collapse_timetable
-from egov66_timetable.types import Timetable
+from pytest_cases import parametrize_with_cases
+
+from egov66_timetable.callbacks.html import (
+    collapse_timetable,
+    collapse_teacher_timetable,
+)
+from egov66_timetable.types import (
+    Lesson,
+    Timetable,
+)
+from egov66_timetable.utils import get_type_adapter
 
 
-def test_collapse_timetable():
+@parametrize_with_cases("day_lessons,day_expected", prefix="case_student_")
+def test_collapse_timetable(day_lessons: dict[int, tuple[str, str]],
+                            day_expected: list[tuple[str, str, int]]):
     day = {
-        0: (str(uuid4()), ("100", "А")),
-        1: (str(uuid4()), ("100", "А")),
-        2: (str(uuid4()), ("200", "Б")),
-        3: (str(uuid4()), ("100", "А")),
-        4: (str(uuid4()), ("100", "А")),
+        lesson_num: (str(uuid4()), day_lessons[lesson_num])
+        for lesson_num in day_lessons
     }
-    timetable: Timetable = [day.copy() for _ in range(7)]
-
-    day_collapsed = [
-        ("100", "А", 2),
-        ("200", "Б", 1),
-        ("100", "А", 2),
-    ]
-    expected = [day_collapsed.copy() for _ in range(7)]
-
-    assert collapse_timetable(timetable) == expected
-
-
-def test_collapse_timetable_with_space_in_the_middle():
-    day = {
-        0: (str(uuid4()), ("100", "А")),
-        2: (str(uuid4()), ("200", "Б")),
-        3: (str(uuid4()), ("300", "В")),
-    }
-    timetable: Timetable = [day.copy() for _ in range(7)]
-
-    day_collapsed = [
-        ("100", "А", 1),
-        ("нет", "", 1),
-        ("200", "Б", 1),
-        ("300", "В", 1),
-    ]
-    expected = [day_collapsed.copy() for _ in range(7)]
-
-    assert collapse_timetable(timetable) == expected
-
-
-def test_collapse_timetable_with_space_in_the_beginning():
-    day = {
-        1: (str(uuid4()), ("100", "А")),
-        2: (str(uuid4()), ("200", "Б")),
-        3: (str(uuid4()), ("300", "В")),
-    }
-    timetable: Timetable = [day.copy() for _ in range(7)]
-
-    day_collapsed = [
-        ("нет", "", 1),
-        ("100", "А", 1),
-        ("200", "Б", 1),
-        ("300", "В", 1),
-    ]
-    expected = [day_collapsed.copy() for _ in range(7)]
+    timetable = get_type_adapter(Timetable[Lesson]).validate_python(
+        [day.copy() for _ in range(5)]
+    )
+    expected = [day_expected.copy() for _ in range(5)]
 
     assert collapse_timetable(timetable) == expected
 
 
 def test_collapse_timetable_empty():
-    timetable: Timetable = [{} for _ in range(7)]
+    timetable: Timetable[Lesson] = [{} for _ in range(5)]
 
-    day_collapsed = [("", "", 1)] * 3
-    expected = [day_collapsed.copy() for _ in range(7)]
+    day_expected = [("", "", 1)] * 3
+    expected = [day_expected.copy() for _ in range(5)]
 
     assert collapse_timetable(timetable) == expected
+
+
+@parametrize_with_cases("day_lessons,day_expected", prefix="case_teacher_")
+def test_collapse_teacher_timetable(day_lessons: dict[int, list[tuple[str, str]]],
+                                    day_expected: list[list[tuple[str, str, int]]]):
+    day = {
+        lesson_num: [
+            (str(uuid4()), event)
+            for event in day_lessons[lesson_num]
+        ]
+        for lesson_num in day_lessons
+    }
+    timetable = get_type_adapter(Timetable[list[Lesson]]).validate_python(
+        [day.copy() for _ in range(5)]
+    )
+    expected = [day_expected.copy() for _ in range(5)]
+
+    assert collapse_teacher_timetable(timetable) == expected
+
+
+def test_collapse_teacher_timetable_empty():
+    timetable: Timetable[list[Lesson]] = [{} for _ in range(5)]
+
+    day_expected = [[("", "")]] * 3
+    expected = [day_expected.copy() for _ in range(5)]
+
+    assert collapse_teacher_timetable(timetable) == expected

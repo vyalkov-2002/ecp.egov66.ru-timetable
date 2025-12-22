@@ -1,0 +1,35 @@
+{#
+SPDX-FileCopyrightText: 2025 Matvey Vyalkov
+
+SPDX-License-Identifier: EUPL-1.2
+#}
+
+{% extends "week.html.jinja" %}
+
+{% block title %}
+  <title>Расписание преподавателя {{ teacher.initials }} с {{ start_date }} по {{ end_date }}</title>
+{% endblock %}
+
+{% block heading %}
+  <span class="line">Расписание преподавателя <a href="..">{{ teacher.initials }}</a></span>
+{% endblock %}
+
+{% block table %}
+  {% for day in timetable %}
+  <h2>{{ (week.monday + timedelta(days=loop.index0)).strftime("%A") }}</h2>
+  <table class="teacher">
+    {% for time_slot in day %}
+    {% set ts_loop = loop %}
+    {% for group, name in time_slot %}
+    <tr>
+      {% if loop.first %}
+      <td class="lesson-num" rowspan={{ loop.length }}>{{ ts_loop.index }}</td>
+      {% endif %}
+      <td class="group">{{ group }}</td>
+      <td>{{ name }}</td>
+    </tr>
+    {% endfor %}
+    {% endfor %}
+  </table>
+  {% endfor %}
+{% endblock %}

@@ -7,8 +7,13 @@
 """
 
 import json
+import logging
 import random
 import string
+import uuid
+from collections import defaultdict
+from typing import NoReturn
+from urllib.parse import ParseResult as URLParseResult, urlparse
 
 import httpx
 from bs4 import BeautifulSoup
@@ -17,16 +22,28 @@ from egov66_timetable.exceptions import InitialDataNotFound
 from egov66_timetable.types import (
     Alias,
     Lesson,
+    LessonData,
     LessonDict,
     Settings,
-    Timetable
+    Timetable,
 )
-from egov66_timetable.utils import get_csrf_token
+from egov66_timetable.utils import (
+    get_csrf_token,
+    get_type_adapter,
+)
+
+logger = logging.getLogger(__name__)
+
+type Events = dict[str, list[LessonDict]]
 
 
 class Client:
 
+    SCHEDULE_PAGE = "/schedule/groups"
+    SCHEDULE_ENDPOINT = "/livewire/message/schedule-group-grid"
+
     settings: Settings
+    instance: URLParseResult
 
     _csrf_token: str | None
     _data: dict | None
@@ -42,6 +59,7 @@ class Client:
         """
 
         self.settings = settings
+        self.instance = urlparse(self.settings["instance"])
 
         self._csrf_token = None
         self._data = None
@@ -50,10 +68,10 @@ class Client:
 
         self._load_aliases()
 
-    def _compute_params_hash(self, *, group: str | None = None,
+    def _compute_params_hash(self, *, search: str | None = None,
                              offset: int | None = None) -> int:
         return (
-            hash(group or self._current_group)
+            hash(search or self._current_search)
             + hash(offset or self._current_offset)
             + hash(self.settings["instance"])
             + hash(tuple(sorted(self.settings["cookies"].items())))
@@ -81,7 +99,7 @@ class Client:
         return self._data
 
     @property
-    def _current_group(self) -> str:
+    def _current_search(self) -> str:
         return self._get_data()["serverMemo"]["data"]["group"]
 
     @property
@@ -100,12 +118,11 @@ class Client:
             match (discipline, rename):
                 case (str(), str()):
                     self._aliases[(classroom, discipline)] = rename
+                case _:
+                    logger.warning("Некорректное переименование: %s", alias)
 
     def _call_livewire_method(self, method: str, *params: str) -> dict:
-        endpoint = (
-            self.settings["instance"]
-            + "/livewire/message/schedule-group-grid"
-        )
+        endpoint = self.instance._replace(path=self.SCHEDULE_ENDPOINT).geturl()
         signature = "".join(
             random.choices(string.ascii_lowercase + string.digits, k=4)
         )
@@ -145,8 +162,8 @@ class Client:
 
         self._has_timetable = "events" in diff["serverMemo"]["data"]
 
-    def _set_group(self, group: str) -> None:
-        self._perform_data_update("set", group)
+    def _set_search(self, search: str) -> None:
+        self._perform_data_update("set", search)
 
     def _go_back(self) -> None:
         self._perform_data_update("minusWeek")
@@ -155,7 +172,7 @@ class Client:
         self._perform_data_update("addWeek")
 
     def _fetch_initial_data(self) -> None:
-        schedule_url = self.settings["instance"] + "/schedule/groups"
+        schedule_url = self.instance._replace(path=self.SCHEDULE_PAGE).geturl()
         response = (
             httpx.get(schedule_url,
                       cookies=self.settings["cookies"]).raise_for_status()
@@ -176,11 +193,11 @@ class Client:
         else:
             raise InitialDataNotFound
 
-    def fetch_timetable(self, group: str, *, offset: int = 0) -> None:
+    def fetch_timetable(self, search: str, *, offset: int = 0) -> None:
         """
         Скачивает страницу с расписанием, выбирает нужную группу и неделю.
 
-        :param group: номер группы
+        :param search: номер группы или преподавателя
         :param offset: смещение относительно текущей недели (``-1`` — предыдущая
             неделя, ``+1`` — следующая)
         """
@@ -188,8 +205,8 @@ class Client:
         if self._data is None:
             self._fetch_initial_data()
 
-        if self._current_group != group:
-            self._set_group(group)
+        if self._current_search != search:
+            self._set_search(search)
         for _ in range(offset - self._current_offset, 0):  # offset < 0
             self._go_back()
         for _ in range(offset - self._current_offset):  # offset > 0
@@ -197,8 +214,23 @@ class Client:
 
         self._params_hash = self._compute_params_hash()
 
-    def _make_lesson(self, lesson: LessonDict) -> Lesson:
+    def _guess_lesson_name(self, lesson: LessonDict, classroom: str) -> str:
         name = lesson.get("discipline") or ""
+        if (rename := lesson.get("comment")) is not None:
+            # Если в возвращенных данных уже есть комментарий, используем
+            # его в качестве названия и пропускаем алиасы.
+            return rename
+        if (rename := self._aliases.get((classroom, name))) is not None:
+            # Специфичное переименование: требует совпадения аудитории и
+            # названия учебной дисциплины.
+            return rename
+        if (rename := self._aliases.get((None, name))) is not None:
+            # Общее переименование: достаточно лишь названия.
+            return rename
+
+        return name
+
+    def _guess_lesson_classroom(self, lesson: LessonDict) -> str:
         classroom = (
             lesson.get("place") or lesson.get("classroom") or ""
         ).split(" ")[0]
@@ -206,21 +238,24 @@ class Client:
         if len(classroom) > 3:
             classroom = ""
 
-        if (rename := lesson.get("comment")) is not None:
-            # Если в возвращенных данных уже есть комментарий, используем
-            # его в качестве названия и пропускаем алиасы.
-            name = rename
-        elif (rename := self._aliases.get((classroom, name))) is not None:
-            # Специфичное переименование: требует совпадения аудитории и
-            # названия учебной дисциплины.
-            name = rename
-        elif (rename := self._aliases.get((None, name))) is not None:
-            # Общее переименование: достаточно лишь названия.
-            name = rename
+        return classroom
 
-        return (lesson["id"], (classroom, name))
+    def _make_lesson(self, lesson: LessonDict) -> Lesson:
+        classroom = self._guess_lesson_classroom(lesson)
+        name = self._guess_lesson_name(lesson, classroom)
 
-    def make_timetable(self, group: str, *, offset: int = 0) -> Timetable:
+        return Lesson(lesson["id"], LessonData(classroom, name))
+
+    def _fetch_events(self, search: str, *, offset: int) -> Events:
+        if self._compute_params_hash(search=search, offset=offset) != self._params_hash:
+            self.fetch_timetable(search, offset=offset)
+
+        events = {}
+        if self._has_timetable:
+            events = self._get_data()["serverMemo"]["data"]["events"]
+        return get_type_adapter(Events).validate_python(events)
+
+    def make_timetable(self, group: str, *, offset: int = 0) -> Timetable[Lesson]:
         """
         Составляет расписание на неделю.
 
@@ -230,21 +265,22 @@ class Client:
         :returns: отсортированное расписание
         """
 
-        result: Timetable = [{} for _ in range(7)]
+        result: Timetable[Lesson] = [{} for _ in range(7)]
 
-        if self._compute_params_hash(group=group, offset=offset) != self._params_hash:
-            self.fetch_timetable(group, offset=offset)
-
-        events: dict[str, list[LessonDict]] = {}
-        if self._has_timetable:
-            events = self._get_data()["serverMemo"]["data"]["events"]
-
+        events = self._fetch_events(group, offset=offset)
         for cell in events:
             lesson = events[cell][0]
             day_num = lesson["dayWeekNum"]
             lesson_num = abs(lesson["numberPair"] - 1)
 
-            result[day_num][lesson_num] = self._make_lesson(lesson)
+            if len(events[cell]) == 1:
+                result[day_num][lesson_num] = self._make_lesson(lesson)
+            else:
+                result[day_num][lesson_num] = Lesson(
+                    str(uuid.uuid4()),
+                    LessonData("?", "Ошибка в расписании: "
+                                    "Несколько пары в одно и то же время")
+                )
 
         # Если на выходных ничего нет, удаляем лишние дни.
         for _ in range(2):
@@ -253,3 +289,52 @@ class Client:
             del result[-1]
 
         return result
+
+
+class TeacherClient(Client):
+
+    SCHEDULE_PAGE = "/schedule/teachers"
+    SCHEDULE_ENDPOINT = "/livewire/message/schedule-teacher-grid"
+
+    @property
+    def _current_search(self) -> str:
+        return self._get_data()["serverMemo"]["data"]["teacher"]
+
+    def _make_teacher_lesson(self, lesson: LessonDict) -> Lesson:
+        classroom = self._guess_lesson_classroom(lesson)
+        name = self._guess_lesson_name(lesson, classroom)
+
+        return Lesson(
+            lesson["id"],
+            LessonData(lesson.get("group") or "", name)
+        )
+
+    def make_teacher_timetable(self, teacher: str, *, offset: int = 0) -> Timetable[list[Lesson]]:
+        """
+        Составляет расписание на неделю.
+
+        :param teacher: номер учителя (UUID)
+        :param offset: смещение относительно текущей недели (``-1`` — предыдущая
+            неделя, ``+1`` — следующая)
+        :returns: отсортированное расписание
+        """
+
+        result: Timetable[list[Lesson]] = [defaultdict(list) for _ in range(7)]
+
+        events = self._fetch_events(teacher, offset=offset)
+        for cell in events:
+            for lesson in events[cell]:
+                day_num = lesson["dayWeekNum"]
+                lesson_num = abs(lesson["numberPair"] - 1)
+                result[day_num][lesson_num].append(self._make_teacher_lesson(lesson))
+
+        # Если на выходных ничего нет, удаляем лишние дни.
+        for _ in range(2):
+            if len(result[-1]) > 0:
+                break
+            del result[-1]
+
+        return result
+
+    def make_timetable(self, *args: object, **kwargs: object) -> NoReturn:  # type: ignore[override]
+        raise NotImplementedError

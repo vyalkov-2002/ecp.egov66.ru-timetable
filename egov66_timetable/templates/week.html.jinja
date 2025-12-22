@@ -17,13 +17,17 @@ SPDX-License-Identifier: EUPL-1.2
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <meta name="generator" content="https://altlinux.space/acme-corp/ecp.egov66.ru-timetable" />
   <link rel="stylesheet" href="{{ css_path }}" />
-  <title>Расписание группы {{ group }} с {{ start_date }} по {{ end_date }}</title>
+  {% block title %}
+    <title>Расписание группы {{ group }} с {{ start_date }} по {{ end_date }}</title>
+  {% endblock %}
   {% block head_extra %}{% endblock %}
 </head>
 <body>
   <header>
     <h1>
-      <span class="line">Расписание группы <a href="..">{{ group }}</a></span>
+      {% block heading %}
+        <span class="line">Расписание группы <a href="..">{{ group }}</a></span>
+      {% endblock %}
       <span class="line">с {{ start_date }} по {{ end_date }}</span>
       <span class="line">
         (<a href="{{ next_week_link }}">вперёд</a> | <a href="{{ prev_week_link }}">назад</a>)
@@ -31,22 +35,23 @@ SPDX-License-Identifier: EUPL-1.2
     </h1>
   </header>
   <main>	
-    {% for day in timetable %}
-    <h2>{{ (week.monday + timedelta(days=loop.index0)).strftime("%A") }}</h2>
-    <table>
-      {% for classroom, name, rowspan in day %}
-      <tr>
-        <td class="classroom">{{ classroom }}</td>
-        <td rowspan={{ rowspan }}>{{ name }}</td>
-      </tr>
-      {% for _ in range(rowspan - 1) %}
-      <tr>
-        <td class="classroom">{{ classroom }}</td>
-      </tr>
+    {% block table %}
+      {% for day in timetable %}
+      <h2>{{ (week.monday + timedelta(days=loop.index0)).strftime("%A") }}</h2>
+      <table class="student">
+        {% for classroom, name, rowspan in day %}
+        {% for _ in range(rowspan) %}
+        <tr>
+          <td class="classroom">{{ classroom }}</td>
+          {% if loop.first %}
+          <td rowspan={{ rowspan }}>{{ name }}</td>
+          {% endif %}
+        </tr>
+        {% endfor %}
+        {% endfor %}
+      </table>
       {% endfor %}
-      {% endfor %}
-    </table>
-    {% endfor %}
+    {% endblock %}
   </main>
   <footer>
     <nav>
