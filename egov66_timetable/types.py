@@ -135,9 +135,22 @@ class Week:
 
 
 @with_config(ConfigDict(frozen=True))
+class TeacherDict(TypedDict):
+    """
+    Преподаватель в данных расписания.
+    """
+
+    #: UUID объекта.
+    id: UUID4Str
+
+    #: Фамилия Имя Отчество
+    fio: str | None
+
+
+@with_config(ConfigDict(frozen=True))
 class LessonDict(TypedDict):
     """
-    Пара в расписании.
+    Пара в данных расписания.
     """
 
     #: UUID объекта.
@@ -158,6 +171,9 @@ class LessonDict(TypedDict):
     #: Комментарий (например, боле конкретное название предмета).
     comment: str | None
 
+    #: Преподаватели.
+    teachers: dict[UUID4Str, TeacherDict]
+
     #: Номер недели, начиная с нуля.
     dayWeekNum: int
 
@@ -173,6 +189,9 @@ class Alias(TypedDict):
 
     #: Название учебной дисциплины как в личном кабинете.
     discipline: str
+
+    #: ФИО преподавателя.
+    teacher: NotRequired[str]
 
     #: Номер аудитории.
     classroom: NotRequired[str]

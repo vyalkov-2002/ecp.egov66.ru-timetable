@@ -12,7 +12,7 @@ import random
 import string
 import uuid
 from collections import defaultdict
-from typing import NoReturn
+from typing import Literal, NoReturn
 from urllib.parse import ParseResult as URLParseResult, urlparse
 
 import httpx
@@ -51,7 +51,8 @@ class Client:
     _has_timetable: bool
 
     # {(classroom, discipline): rename}
-    _aliases: dict[tuple[str | None, str], str]
+    _aliases: dict[Literal["by_classroom", "by_teacher"],
+                   dict[tuple[str | None, str], str]]
 
     def __init__(self, settings: Settings):
         """
@@ -108,16 +109,21 @@ class Client:
         return data.get("addNumWeek", 0) - data.get("minusNumWeek", 0)
 
     def _load_aliases(self) -> None:
-        self._aliases = {}
+        self._aliases = {
+            "by_classroom": {},
+            "by_teacher": {},
+        }
 
         alias: Alias
         for alias in self.settings.get("aliases", []):
             discipline = alias.get("discipline")
+            teacher = alias.get("teacher")
             classroom = alias.get("classroom")
             rename = alias.get("rename")
             match (discipline, rename):
                 case (str(), str()):
-                    self._aliases[(classroom, discipline)] = rename
+                    self._aliases["by_classroom"][(classroom, discipline)] = rename
+                    self._aliases["by_teacher"][(teacher, discipline)] = rename
                 case _:
                     logger.warning("Некорректное переименование: %s", alias)
 
@@ -220,11 +226,17 @@ class Client:
             # Если в возвращенных данных уже есть комментарий, используем
             # его в качестве названия и пропускаем алиасы.
             return rename
-        if (rename := self._aliases.get((classroom, name))) is not None:
+        for teacher in lesson.get("teachers", {}).values():
+            fio = teacher.get("fio", "")
+            if (rename := self._aliases["by_teacher"].get((fio, name))) is not None:
+                # Специфичное переименование: требует совпадения ФИО преподавателя и
+                # названия учебной дисциплины.
+                return rename
+        if (rename := self._aliases["by_classroom"].get((classroom, name))) is not None:
             # Специфичное переименование: требует совпадения аудитории и
             # названия учебной дисциплины.
             return rename
-        if (rename := self._aliases.get((None, name))) is not None:
+        if (rename := self._aliases["by_classroom"].get((None, name))) is not None:
             # Общее переименование: достаточно лишь названия.
             return rename
 
