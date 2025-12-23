@@ -7,6 +7,7 @@
 """
 
 import logging
+from collections import defaultdict
 from datetime import timedelta
 from pathlib import Path
 
@@ -27,8 +28,8 @@ from egov66_timetable.types import (
 # classroom, name, rowspan
 type CollapsedTimetable = list[list[tuple[str, str, int]]]
 
-# group, name
-type CollapsedTeacherTimetable = list[list[list[tuple[str, str]]]]
+# group, name, rowspan
+type CollapsedTeacherTimetable = list[list[list[tuple[str, str, int]]]]
 
 logger = logging.getLogger(__name__)
 
@@ -68,30 +69,33 @@ def collapse_timetable(timetable: Timetable[Lesson]) -> CollapsedTimetable:
     result: CollapsedTimetable = [[] for _ in range(len(timetable))]
     # pylint: disable=consider-using-enumerate
     for day in range(len(timetable)):
-        if len(timetable[day]) != 0:
-            for lesson_num in range(max(timetable[day]) + 1):
-                this_lesson = timetable[day].get(lesson_num) or (None, ("нет", ""))
-                classroom, name = this_lesson[1]
-
-                if (
-                    # если это первая итерация
-                    len(result[day]) == 0
-                    # если вместо пары "окно"
-                    or this_lesson[0] is None
-                    # если эта пара такая же, как прошлая
-                    or (classroom, name) != result[day][-1][:2]
-                ):
-                    result[day].append(
-                        (classroom, name, 1)
-                    )
-                else:
-                    # Увеличиваем rowspan на 1
-                    result[day][-1] = (
-                        *result[day][-1][:2], result[day][-1][2] + 1
-                    )
-        else:
+        if len(timetable[day]) == 0:
             # Расписания еще нет, добавляем 3 пустые строки.
             result[day].extend([("", "", 1)] * 3)
+            continue
+
+        for lesson_num in range(max(timetable[day]) + 1):
+            this_lesson = timetable[day].get(lesson_num) or (None, ("нет", ""))
+            classroom, name = this_lesson[1]
+
+            if (
+                # если это первая итерация
+                len(result[day]) == 0
+                # если вместо пары "окно"
+                or this_lesson[0] is None
+                # если эта пара не такая же, как прошлая
+                or (classroom, name) != result[day][-1][:2]
+            ):
+                # Добавляем новую строку
+                result[day].append(
+                    (classroom, name, 1)
+                )
+            else:
+                # Увеличиваем rowspan на 1
+                current_rowspan = result[day][-1][2]
+                result[day][-1] = (
+                    classroom, name, current_rowspan + 1
+                )
 
     return result
 
@@ -100,7 +104,16 @@ def collapse_teacher_timetable(timetable: Timetable[list[Lesson]]) -> CollapsedT
     """
     Преобразует расписание в пригодное для рендеринга в формате таблицы, а
     именно переводит его из формата ``{номер_пары: [(группа, предмет), ...]}`` в
-    формат ``(группа, предмет)``.
+    формат ``(группа, предмет, число_повторов)``.
+
+    ``число_повторов``:
+
+    * **>0:** если одна и та же группа занимается одним и тем же предметом
+        несколько пар подряд
+    * **<0:** если у нескольких групп один и тот же предмет в одно и то же время
+        (указывается только один раз)
+    * **=0:** если у нескольких групп один и тот же предмет (указывается при
+        повторах, в этом случае ``предмет`` - пустая строка)
 
     Если расписания на день нет, вставляет вместо него три пустые строки.
 
@@ -110,17 +123,54 @@ def collapse_teacher_timetable(timetable: Timetable[list[Lesson]]) -> CollapsedT
     result: CollapsedTeacherTimetable = [[] for _ in range(len(timetable))]
     # pylint: disable=consider-using-enumerate
     for day in range(len(timetable)):
-        if len(timetable[day]) != 0:
-            for lesson_num in range(max(timetable[day]) + 1):
-                time_slot = timetable[day].get(lesson_num, [])
-                if len(time_slot) > 0:
-                    # если вместо пары "окно"
-                    result[day].append([lesson[1] for lesson in time_slot])
-                else:
-                    result[day].append([("нет", "")])
-        else:
+        if len(timetable[day]) == 0:
             # Расписания еще нет, добавляем 3 пустые строки.
-            result[day].extend([[("", "")]] * 3)
+            result[day].extend([[("", "", 1)]] * 3)
+            continue
+
+        for lesson_num in range(max(timetable[day]) + 1):
+            time_slot = timetable[day].get(lesson_num, [])
+
+            if len(time_slot) == 0:
+                # если вместо пары "окно"
+                result[day].append([("нет", "", 1)])
+                continue
+
+            if len(time_slot) == 1:
+                group, name = time_slot[0][1]
+                if (
+                    # если это первая итерация
+                    len(result[day]) == 0
+                    # если прошлая пара была совмещенной у нескольких групп
+                    or len(result[day][-1]) != 1
+                    # если эта пара не такая же, как прошлая
+                    or (group, name) != result[day][-1][0][:2]
+                ):
+                    # Добавляем новую строку
+                    result[day].append([(group, name, 1)])
+                else:
+                    # Увеличиваем rowspan на 1
+                    current_rowspan = result[day][-1][0][2]
+                    result[day][-1] = [
+                        (group, name, current_rowspan + 1)
+                    ]
+                continue
+
+            time_slot_collapsed: dict[str, list[str]] = defaultdict(list)
+            for (_, (group, name)) in time_slot:
+                time_slot_collapsed[name].append(group)
+
+            result[day].append([])
+            for name in sorted(time_slot_collapsed):
+                groups = time_slot_collapsed[name]
+                head, *tail = sorted(groups)
+                result[day][-1].append(
+                    (head, name, -len(groups))
+                )
+                for group in tail:
+                    result[day][-1].append(
+                        (group, "", 0)
+                    )
 
     return result
 

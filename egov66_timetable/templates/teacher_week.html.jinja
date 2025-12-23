@@ -17,17 +17,32 @@ SPDX-License-Identifier: EUPL-1.2
 {% block table %}
   {% for day in timetable %}
   <h2>{{ (week.monday + timedelta(days=loop.index0)).strftime("%A") }}</h2>
+  {% set ns = namespace(lesson_num=1) %}
   <table class="teacher">
     {% for time_slot in day %}
-    {% set ts_loop = loop %}
-    {% for group, name in time_slot %}
+    {% for group, name, rowspan in time_slot %}
+    {% set lesson_loop = loop %}
+    {% for _ in range(rowspan) %}
     <tr>
+      <td class="lesson-num">{{ ns.lesson_num }}</td>
+      <td class="group">{{ group }}</td>
       {% if loop.first %}
-      <td class="lesson-num" rowspan={{ loop.length }}>{{ ts_loop.index }}</td>
+      <td rowspan="{{ rowspan }}">{{ name }}</td>
+      {% endif %}
+    </tr>
+    {% set ns.lesson_num = ns.lesson_num + 1 %}
+    {% else %}
+    <tr>
+      {% if lesson_loop.first %}
+      <td class="lesson-num" rowspan={{ lesson_loop.length }}>{{ ns.lesson_num }}</td>
       {% endif %}
       <td class="group">{{ group }}</td>
-      <td>{{ name }}</td>
+      {% if rowspan != 0 %}
+      <td rowspan="{{ rowspan|abs }}">{{ name }}</td>
+      {% endif %}
     </tr>
+    {% set ns.lesson_num = ns.lesson_num + 1 %}
+    {% endfor %}
     {% endfor %}
     {% endfor %}
   </table>

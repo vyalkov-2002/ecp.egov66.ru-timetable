@@ -62,7 +62,7 @@ def test_collapse_teacher_timetable(day_lessons: dict[int, list[tuple[str, str]]
 def test_collapse_teacher_timetable_empty():
     timetable: Timetable[list[Lesson]] = [{} for _ in range(5)]
 
-    day_expected = [[("", "")]] * 3
+    day_expected = [[("", "", 1)]] * 3
     expected = [day_expected.copy() for _ in range(5)]
 
     assert collapse_teacher_timetable(timetable) == expected
