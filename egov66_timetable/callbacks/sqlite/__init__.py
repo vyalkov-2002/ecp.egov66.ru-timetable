@@ -11,7 +11,7 @@ import sqlite3
 from importlib.resources import files
 
 from egov66_timetable import TimetableCallback
-from egov66_timetable.types import Timetable, Week
+from egov66_timetable.types import Lesson, Timetable, Week
 from egov66_timetable.utils import (
     flatten,
     get_type_adapter,
@@ -33,7 +33,7 @@ def create_db(cur: sqlite3.Cursor | sqlite3.Connection) -> sqlite3.Cursor:
     return cur.executescript(sql_script)
 
 
-def load_timetable(cur: sqlite3.Cursor, *, group: str, week: Week) -> Timetable:
+def load_timetable(cur: sqlite3.Cursor, *, group: str, week: Week) -> Timetable[Lesson]:
     """
     Загружает расписание из базы данных.
 
@@ -54,7 +54,7 @@ def load_timetable(cur: sqlite3.Cursor, *, group: str, week: Week) -> Timetable:
         [group, week.week_id]
     )
 
-    result: Timetable = [{} for _ in range(7)]
+    result: Timetable[Lesson] = [{} for _ in range(7)]
     for lesson_id, classroom, name, day_num, lesson_num in cur.fetchall():
         result[day_num][lesson_num] = (lesson_id, (classroom, name))
 
@@ -64,17 +64,15 @@ def load_timetable(cur: sqlite3.Cursor, *, group: str, week: Week) -> Timetable:
             break
         del result[-1]
 
-    return get_type_adapter(Timetable).validate_python(result)
+    return get_type_adapter(Timetable[Lesson]).validate_python(result)
 
 
 def sqlite_callback(cur: sqlite3.Cursor) -> TimetableCallback:
     """
     Записывает расписание в базу данных.
-
-    :param settings: настройки
     """
 
-    def callback(timetable: Timetable, group: str, week: Week) -> None:
+    def callback(timetable: Timetable[Lesson], group: str, week: Week) -> None:
         total_deleted: int = 0
         total_added: int = 0
 

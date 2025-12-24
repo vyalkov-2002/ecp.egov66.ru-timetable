@@ -19,11 +19,11 @@ from egov66_timetable import (
 )
 from egov66_timetable.types import (
     Lesson,
-    Settings,
     Teacher,
     Timetable,
     Week,
 )
+from egov66_timetable.types.settings import Settings
 
 # classroom, name, rowspan
 type CollapsedTimetable = list[list[tuple[str, str, int]]]

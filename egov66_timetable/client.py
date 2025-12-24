@@ -20,12 +20,18 @@ from bs4 import BeautifulSoup
 
 from egov66_timetable.exceptions import InitialDataNotFound
 from egov66_timetable.types import (
-    Alias,
     Lesson,
     LessonData,
-    LessonDict,
-    Settings,
     Timetable,
+)
+from egov66_timetable.types.livewire import (
+    Events,
+    LessonDict,
+    LivewireData,
+)
+from egov66_timetable.types.settings import (
+    Alias,
+    Settings,
 )
 from egov66_timetable.utils import (
     get_csrf_token,
@@ -33,8 +39,6 @@ from egov66_timetable.utils import (
 )
 
 logger = logging.getLogger(__name__)
-
-type Events = dict[str, list[LessonDict]]
 
 
 class Client:
@@ -46,7 +50,7 @@ class Client:
     instance: URLParseResult
 
     _csrf_token: str | None
-    _data: dict | None
+    _data: LivewireData | None
     _params_hash: int
     _has_timetable: bool
 
@@ -89,7 +93,7 @@ class Client:
             assert self._csrf_token is not None
         return self._csrf_token
 
-    def _get_data(self) -> dict:
+    def _get_data(self) -> LivewireData:
         """
         :returns: текущие данные
         """
@@ -101,12 +105,12 @@ class Client:
 
     @property
     def _current_search(self) -> str:
-        return self._get_data()["serverMemo"]["data"]["group"]
+        return self._get_data()["serverMemo"]["data"]["group"] or ""
 
     @property
     def _current_offset(self) -> int:
-        data: dict = self._get_data()["serverMemo"]["data"]
-        return data.get("addNumWeek", 0) - data.get("minusNumWeek", 0)
+        data = self._get_data()["serverMemo"]["data"]
+        return (data.get("addNumWeek") or 0) - (data.get("minusNumWeek") or 0)
 
     def _load_aliases(self) -> None:
         self._aliases = {
@@ -127,7 +131,7 @@ class Client:
                 case _:
                     logger.warning("Некорректное переименование: %s", alias)
 
-    def _call_livewire_method(self, method: str, *params: str) -> dict:
+    def _call_livewire_method(self, method: str, *params: str) -> LivewireData:
         endpoint = self.instance._replace(path=self.SCHEDULE_ENDPOINT).geturl()
         signature = "".join(
             random.choices(string.ascii_lowercase + string.digits, k=4)
@@ -310,7 +314,7 @@ class TeacherClient(Client):
 
     @property
     def _current_search(self) -> str:
-        return self._get_data()["serverMemo"]["data"]["teacher"]
+        return self._get_data()["serverMemo"]["data"]["teacher"] or ""
 
     def _make_teacher_lesson(self, lesson: LessonDict) -> Lesson:
         classroom = self._guess_lesson_classroom(lesson)

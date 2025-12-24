@@ -13,11 +13,11 @@ from collections.abc import Callable
 from egov66_timetable.client import Client, TeacherClient
 from egov66_timetable.types import (
     Lesson,
-    Settings,
     Teacher,
     Timetable,
     Week,
 )
+from egov66_timetable.types.settings import Settings
 from egov66_timetable.utils import get_current_week
 
 __version__ = "0.0.0"

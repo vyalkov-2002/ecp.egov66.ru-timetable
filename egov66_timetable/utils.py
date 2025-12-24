@@ -15,7 +15,10 @@ from egov66_timetable.exceptions import (
     CSRFTokenNotFound,
     SessionExpired,
 )
-from egov66_timetable.types import Settings, Week
+from egov66_timetable.types import Week
+from egov66_timetable.types.settings import Settings
+
+type NestedSequence[T_] = Sequence[T_ | NestedSequence[T_]]
 
 
 @functools.cache
@@ -27,7 +30,7 @@ def get_type_adapter[T](t: type[T]) -> TypeAdapter[T]:
     return TypeAdapter(t)
 
 
-def flatten(seq: Sequence) -> list:
+def flatten[T](seq: NestedSequence[T]) -> list[T]:
     """
     Превращает последовательность с несколькими уровнями вложенности в
     одноуровневый список.
@@ -61,9 +64,11 @@ def flatten(seq: Sequence) -> list:
         case [[*head], *tail]:
             return [*flatten(head), *flatten(tail)]
         case [head, *tail]:
-            if isinstance(head, Collection) and not isinstance(head, Sequence):
-                raise TypeError(err_msg.format(type(head)))
-            return [head, *flatten(tail)]
+            if not isinstance(head, Sequence):
+                if isinstance(head, Collection):
+                    raise TypeError(err_msg.format(type(head)))
+                return [head, *flatten(tail)]
+            raise TypeError(f"Не удалось разложить '{head}' на элементы")
         case _:
             raise ValueError
 

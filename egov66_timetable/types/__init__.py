@@ -5,24 +5,22 @@
 from datetime import date, timedelta
 from functools import cached_property
 from pathlib import Path
-from typing import Annotated, NamedTuple, TypedDict, NotRequired
+from typing import Annotated, NamedTuple
 
 import iuliia
 from pydantic import (
     BeforeValidator,
-    ConfigDict,
     HttpUrl,
     TypeAdapter,
     UUID4,
-    with_config,
 )
 from pydantic.dataclasses import dataclass
 
 type Timetable[T] = list[dict[int, T]]
 
-http_url_adapter: TypeAdapter = TypeAdapter(HttpUrl)
-uuid4_adapter: TypeAdapter = TypeAdapter(UUID4)
-path_adapter: TypeAdapter = TypeAdapter(Path)
+http_url_adapter: TypeAdapter[HttpUrl] = TypeAdapter(HttpUrl)
+uuid4_adapter: TypeAdapter[UUID4] = TypeAdapter(UUID4)
+path_adapter: TypeAdapter[Path] = TypeAdapter(Path)
 
 HttpUrlStr = Annotated[
     str,
@@ -38,7 +36,7 @@ PathStr = Annotated[
 ]
 
 
-@dataclass
+@dataclass(frozen=True)
 class Teacher:
 
     #: UUID объекта.
@@ -132,88 +130,3 @@ class Week:
         if isinstance(other, int):
             return self + -other
         raise NotImplementedError
-
-
-@with_config(ConfigDict(frozen=True))
-class TeacherDict(TypedDict):
-    """
-    Преподаватель в данных расписания.
-    """
-
-    #: UUID объекта.
-    id: UUID4Str
-
-    #: Фамилия Имя Отчество
-    fio: str | None
-
-
-@with_config(ConfigDict(frozen=True))
-class LessonDict(TypedDict):
-    """
-    Пара в данных расписания.
-    """
-
-    #: UUID объекта.
-    id: UUID4Str
-
-    #: Название аудитории.
-    classroom: str | None
-
-    #: Номер группы.
-    group: str | None
-
-    #: Номер аудитории.
-    place: str | None
-
-    #: Название учебной дисциплины.
-    discipline: str | None
-
-    #: Комментарий (например, боле конкретное название предмета).
-    comment: str | None
-
-    #: Преподаватели.
-    teachers: dict[UUID4Str, TeacherDict]
-
-    #: Номер недели, начиная с нуля.
-    dayWeekNum: int
-
-    #: Номер пары, начиная с единицы.
-    numberPair: int
-
-
-@with_config(ConfigDict(extra="forbid", validate_assignment=True))
-class Alias(TypedDict):
-    """
-    Настройка, которая позволяет дать более короткое имя учебной дисциплине.
-    """
-
-    #: Название учебной дисциплины как в личном кабинете.
-    discipline: str
-
-    #: ФИО преподавателя.
-    teacher: NotRequired[str]
-
-    #: Номер аудитории.
-    classroom: NotRequired[str]
-
-    #: Новое название.
-    rename: str
-
-
-@with_config(ConfigDict(extra="allow", validate_assignment=True))
-class Settings(TypedDict):
-    """
-    Настройки в формате JSON.
-    """
-
-    #: Адрес сайта личного кабинета.
-    instance: HttpUrlStr
-
-    #: Cookie-файлы.
-    cookies: dict[str, str]
-
-    #: Путь, по которому браузер будет запрашивать таблицу стилей.
-    css_path: NotRequired[PathStr]
-
-    #: Список переименований.
-    aliases: NotRequired[list[Alias]]
