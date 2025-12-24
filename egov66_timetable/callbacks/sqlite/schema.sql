@@ -6,7 +6,7 @@ PRAGMA journal_mode=WAL;
 
 CREATE TABLE IF NOT EXISTS lesson(
     -- UUID пары
-    id TEXT PRIMARY KEY NOT NULL,
+    id TEXT NOT NULL,
 
     -- Номер аудитории
     classroom TEXT,
@@ -33,8 +33,12 @@ CREATE TABLE IF NOT EXISTS lesson(
     last_updated TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
     -- Дата последней проверки
-    last_checked TEXT NOT NULL DEFAULT '1970-01-01 00:00:00'
+    last_checked TEXT NOT NULL DEFAULT '1970-01-01 00:00:00',
+
+    PRIMARY KEY (id, group_id)
 );
 
-CREATE INDEX IF NOT EXISTS idx_lessons_group
-ON lesson (group_id, week_id, day_num);
+CREATE INDEX IF NOT EXISTS
+    idx_lessons_group
+ON
+    lesson (group_id, week_id, day_num);

@@ -108,9 +108,9 @@ def sqlite_callback(cur: sqlite3.Cursor) -> TimetableCallback:
                     SET
                       is_deleted = TRUE, last_updated = CURRENT_TIMESTAMP
                     WHERE
-                      id = ?
+                      id = ? AND group_id = ?
                     """,
-                    [(lesson_id,) for lesson_id in deleted_lesson_ids]
+                    [(lesson_id, group) for lesson_id in deleted_lesson_ids]
                 )
 
             # 4. Найдем пары, которые были добавлены.
@@ -121,11 +121,11 @@ def sqlite_callback(cur: sqlite3.Cursor) -> TimetableCallback:
 
             if (num_added := len(added_lesson_ids)) > 0:
                 total_added += num_added
-                data = [
+                data = (
                     [*flatten(day[lesson_num]), group, week.week_id,
                      day_num, lesson_num]
                     for lesson_num in added_lesson_ids.values()
-                ]
+                )
 
                 sql: str = (
                     """
@@ -137,7 +137,7 @@ def sqlite_callback(cur: sqlite3.Cursor) -> TimetableCallback:
                 )
 
                 if not __debug__:
-                    cur.executemany(sql, data)
+                    cur.executemany(sql, list(data))
                 else:
                     for lesson in data:
                         logger.debug("Добавляю новую запись в таблицу lesson: %s", lesson)
