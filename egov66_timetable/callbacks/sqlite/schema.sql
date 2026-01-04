@@ -17,6 +17,9 @@ CREATE TABLE IF NOT EXISTS lesson(
     -- Группа, у которой пара стоит в расписании
     group_id TEXT NOT NULL,
 
+    -- UUID преподавателя, который ведет предмет
+    teacher_id TEXT,
+
     -- Номер года и номер недели
     week_id TEXT NOT NULL,
 

@@ -10,8 +10,11 @@ import logging
 import sqlite3
 from importlib.resources import files
 
-from egov66_timetable import TimetableCallback
-from egov66_timetable.types import Lesson, Timetable, Week
+from egov66_timetable import (
+    TeacherTimetableCallback,
+    TimetableCallback,
+)
+from egov66_timetable.types import Lesson, Teacher, Timetable, Week
 from egov66_timetable.utils import (
     flatten,
     get_type_adapter,
@@ -147,5 +150,39 @@ def sqlite_callback(cur: sqlite3.Cursor) -> TimetableCallback:
             logger.info("Устаревших записей в БД: %d", total_deleted)
         if total_added + total_deleted == 0:
             logger.info("Расписание в БД уже актуально")
+
+    return callback
+
+
+def sqlite_teacher_callback(cur: sqlite3.Cursor) -> TeacherTimetableCallback:
+    """
+    Добавляет информацию о преподавателе в расписание в базе данных.
+    """
+
+    def callback(timetable: Timetable[list[Lesson]], teacher: Teacher, week: Week) -> None:
+        params = ((teacher.id, lesson[0], lesson[1][0])
+                  for day in timetable
+                  for time_slot in day.values()
+                  for lesson in time_slot)
+
+        sql: str = (
+            """
+            UPDATE
+              lesson
+            SET
+              teacher_id = ?
+            WHERE
+              id = ? AND group_id = ?
+            """
+        )
+
+        if not __debug__:
+            logger.info("Добавляю информацию о преподавателе в расписание")
+            cur.executemany(sql, list(params))
+        else:
+            for data in params:
+                logger.debug("Добавляю информацию о преподавателе к "
+                             "занятию (%s, %s)", *data[:-2])
+                cur.execute(sql, data)
 
     return callback
