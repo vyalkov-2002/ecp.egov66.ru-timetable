@@ -10,6 +10,7 @@ from typing import Annotated, NamedTuple
 import iuliia
 from pydantic import (
     BeforeValidator,
+    Field,
     HttpUrl,
     TypeAdapter,
     UUID4,
@@ -43,13 +44,13 @@ class Teacher:
     id: UUID4Str
 
     #: Фамилия.
-    surname: str
+    surname: str = Field(min_length=1)
 
     #: Имя.
-    given_name: str
+    given_name: str = Field(min_length=1)
 
     #: Отчество.
-    patronymic: str
+    patronymic: str = Field(...)
 
     @property
     def initials(self) -> str:
@@ -59,9 +60,14 @@ class Teacher:
         >>> from uuid import uuid4
         >>> Teacher(str(uuid4()), "Менделеев", "Дмитрий", "Иванович").initials
         'Менделеев\xa0Д.\xa0И.'
+        >>> Teacher(str(uuid4()), "Пастер", "Луи", "").initials
+        'Л.\xa0Пастер'
         """
 
         nbsp = "\xa0"
+        if not self.patronymic:
+            return nbsp.join([self.given_name[0] + ".", self.surname])
+
         return nbsp.join(
             [self.surname, self.given_name[0] + ".", self.patronymic[0] + "."]
         )
@@ -74,9 +80,17 @@ class Teacher:
         >>> from uuid import uuid4
         >>> Teacher(str(uuid4()), "Менделеев", "Дмитрий", "Иванович").translit
         'mendeleev_d_i'
+        >>> Teacher(str(uuid4()), "Пастер", "Луи", "").translit
+        'lui_paster'
         """
 
-        cyrillic = f"{self.surname}_{self.given_name[0]}_{self.patronymic[0]}"
+        cyrillic: str
+        if self.patronymic:
+            cyrillic = "_".join(
+                [self.surname, self.given_name[0], self.patronymic[0]]
+            )
+        else:
+            cyrillic = "_".join([self.given_name, self.surname])
         return iuliia.MOSMETRO.translate(cyrillic.lower())
 
 
