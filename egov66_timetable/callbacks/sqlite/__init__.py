@@ -36,7 +36,7 @@ def create_db(cur: sqlite3.Cursor | sqlite3.Connection) -> sqlite3.Cursor:
     return cur.executescript(sql_script)
 
 
-def load_timetable(cur: sqlite3.Cursor, *, group: str, week: Week) -> Timetable[Lesson]:
+def load_timetable(cur: sqlite3.Cursor, *, group: str, week: Week | str) -> Timetable[Lesson]:
     """
     Загружает расписание из базы данных.
 
@@ -44,6 +44,8 @@ def load_timetable(cur: sqlite3.Cursor, *, group: str, week: Week) -> Timetable[
     :param week: неделя
     :returns: расписание на неделю для группы
     """
+
+    week_id = week.week_id if isinstance(week, Week) else week
 
     cur.execute(
         """
@@ -54,7 +56,7 @@ def load_timetable(cur: sqlite3.Cursor, *, group: str, week: Week) -> Timetable[
         WHERE
           group_id = ? AND week_id = ? AND is_deleted = FALSE
         """,
-        [group, week.week_id]
+        [group, week_id]
     )
 
     result: Timetable[Lesson] = [{} for _ in range(7)]
