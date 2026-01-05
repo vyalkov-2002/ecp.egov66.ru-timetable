@@ -9,6 +9,11 @@ from egov66_timetable.types import Week
 monday = date.fromisocalendar(2000, 2, 1)
 
 
+def test_week_id():
+    week = Week(monday)
+    Week.from_week_id(week.week_id) == week
+
+
 def test_week_add():
     week = Week(monday) + 1
     assert week.monday == date.fromisocalendar(2000, 3, 1)

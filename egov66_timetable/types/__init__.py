@@ -135,6 +135,11 @@ class Week:
         iso_week = self.monday.isocalendar()
         return f"{iso_week.year}-{iso_week.week}"
 
+    @classmethod
+    def from_week_id(cls, week_id: str) -> "Week":
+        year, week_no = [int(x) for x in week_id.split("-")]
+        return cls(date.fromisocalendar(year, week_no, 1))
+
     def __add__(self, other: object) -> "Week":
         if isinstance(other, int):
             return Week(self.monday + timedelta(weeks=other))
