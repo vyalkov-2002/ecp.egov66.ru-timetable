@@ -4,7 +4,7 @@
 
 import functools
 import json
-from collections.abc import Collection, Sequence
+from collections.abc import Sequence
 from datetime import date, timedelta
 from pathlib import Path
 
@@ -18,7 +18,7 @@ from egov66_timetable.exceptions import (
 from egov66_timetable.types import Week
 from egov66_timetable.types.settings import Settings
 
-type NestedSequence[T_] = Sequence[T_ | NestedSequence[T_]]
+type NestedSequence = Sequence[object | NestedSequence]
 
 
 @functools.cache
@@ -30,7 +30,7 @@ def get_type_adapter[T](t: type[T]) -> TypeAdapter[T]:
     return TypeAdapter(t)
 
 
-def flatten[T](seq: NestedSequence[T]) -> list[T]:
+def flatten(seq: NestedSequence) -> list[object]:
     """
     Превращает последовательность с несколькими уровнями вложенности в
     одноуровневый список.
@@ -40,18 +40,16 @@ def flatten[T](seq: NestedSequence[T]) -> list[T]:
 
     >>> flatten([1, (2, 3)])
     [1, 2, 3]
+    >>> flatten(['1', (2, 3)])
+    ['1', 2, 3]
     >>> flatten([1, 2, []])
     [1, 2]
     >>> flatten([])
     []
     >>> flatten([1, {2, 3}])
-    Traceback (most recent call last):
-        ...
-    TypeError: 'set' не является последовательностью
+    [1, {2, 3}]
     >>> flatten([{1, 2}, 3])
-    Traceback (most recent call last):
-      ...
-    TypeError: 'set' не является последовательностью
+    [{1, 2}, 3]
     """
 
     err_msg = "'{0.__name__}' не является последовательностью"
@@ -64,11 +62,7 @@ def flatten[T](seq: NestedSequence[T]) -> list[T]:
         case [[*head], *tail]:
             return [*flatten(head), *flatten(tail)]
         case [head, *tail]:
-            if not isinstance(head, Sequence):
-                if isinstance(head, Collection):
-                    raise TypeError(err_msg.format(type(head)))
-                return [head, *flatten(tail)]
-            raise TypeError(f"Не удалось разложить '{head}' на элементы")
+            return [head, *flatten(tail)]
         case _:
             raise ValueError
 
