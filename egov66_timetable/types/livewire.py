@@ -49,7 +49,7 @@ class LessonDict(TypedDict):
     comment: str | None
 
     #: Преподаватели.
-    teachers: dict[UUID4Str, TeacherDict]
+    teachers: dict[str, TeacherDict | str]
 
     #: Номер недели, начиная с нуля.
     dayWeekNum: int

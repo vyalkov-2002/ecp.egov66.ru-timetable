@@ -224,14 +224,36 @@ class Client:
 
         self._params_hash = self._compute_params_hash()
 
+    def _guess_teacher(self, lesson: LessonDict) -> list[str]:
+        teachers: list[str] = []
+        search: str | None = None  # Фамилия И.О.
+        for teacher in lesson.get("teachers", {}).values():
+            if isinstance(teacher, str):
+                search = teacher
+            elif (fio := teacher.get("fio")) is not None:
+                teachers.append(fio)
+
+        if search is None:
+            return teachers
+
+        for fio in teachers:
+            f, *io = fio.split(" ")
+            abbr = f + " " + "".join(name[0] + "." for name in io)
+            if abbr == search:
+                return [fio]
+
+        logger.error("Не удалось найти преподавателя '%s' в %s",
+                     search, teachers)
+        return []
+
     def _guess_lesson_name(self, lesson: LessonDict, classroom: str) -> str:
         name = lesson.get("discipline") or ""
         if (rename := lesson.get("comment")) is not None:
             # Если в возвращенных данных уже есть комментарий, используем
             # его в качестве названия и пропускаем алиасы.
             return rename
-        for teacher in lesson.get("teachers", {}).values():
-            fio = teacher.get("fio", "")
+
+        for fio in self._guess_teacher(lesson):
             if (rename := self._aliases["by_teacher"].get((fio, name))) is not None:
                 # Специфичное переименование: требует совпадения ФИО преподавателя и
                 # названия учебной дисциплины.
