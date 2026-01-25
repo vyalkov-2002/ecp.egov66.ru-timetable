@@ -282,6 +282,10 @@ class Client:
         classroom = self._guess_lesson_classroom(lesson)
         name = self._guess_lesson_name(lesson, classroom)
 
+        # Если название начинается с маленькой буквы
+        if name[0].islower():
+            name = name[0].upper() + name[1:]
+
         return Lesson(lesson["id"], LessonData(classroom, name))
 
     def _fetch_events(self, search: str, *, offset: int) -> Events:
