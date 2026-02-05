@@ -54,7 +54,7 @@ def load_timetable(cur: sqlite3.Cursor, *, group: str, week: Week | str) -> Time
         FROM
           lesson
         WHERE
-          group_id = ? AND week_id = ? AND is_deleted = FALSE
+          group_id = ? AND week_id = ? AND obsolete_since IS NULL
         """,
         [group, week_id]
     )
@@ -109,7 +109,7 @@ def sqlite_callback(cur: sqlite3.Cursor) -> TimetableCallback:
                     UPDATE
                       lesson
                     SET
-                      is_deleted = TRUE, last_updated = CURRENT_TIMESTAMP
+                      obsolete_since = CURRENT_TIMESTAMP
                     WHERE
                       id = ? AND group_id = ?
                     """,

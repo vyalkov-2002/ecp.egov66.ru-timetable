@@ -29,14 +29,14 @@ CREATE TABLE IF NOT EXISTS lesson(
     -- Номер пары (начиная с нуля)
     lesson_num INTEGER NOT NULL,
 
-    -- Если TRUE, то пара была удалена из расписания
-    is_deleted INTEGER NOT NULL DEFAULT FALSE,
-
-    -- Дата добавления или обновления
+    -- Дата добавления
     last_updated TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
     -- Дата последней проверки
     last_checked TEXT NOT NULL DEFAULT '1970-01-01 00:00:00',
+
+    -- Дата удаления из расписания
+    obsolete_since TEXT,
 
     PRIMARY KEY (id, group_id)
 );
@@ -45,3 +45,8 @@ CREATE INDEX IF NOT EXISTS
     idx_lessons_group
 ON
     lesson (group_id, week_id, day_num);
+
+CREATE INDEX IF NOT EXISTS
+    idx_lessons_teacher
+ON
+    lesson (teacher_id, week_id, day_num);
