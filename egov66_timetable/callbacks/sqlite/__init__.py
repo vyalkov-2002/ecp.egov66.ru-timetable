@@ -26,6 +26,9 @@ logger = logging.getLogger(__name__)
 def create_db(cur: sqlite3.Cursor | sqlite3.Connection) -> sqlite3.Cursor:
     """
     Создает базу данных и индексы.
+
+    :param cur: курсор SQLite
+    :returns: курсор SQLite
     """
 
     sql_script: str = (
@@ -75,6 +78,9 @@ def load_timetable(cur: sqlite3.Cursor, *, group: str, week: Week | str) -> Time
 def sqlite_callback(cur: sqlite3.Cursor) -> TimetableCallback:
     """
     Записывает расписание в базу данных.
+
+    :param cur: курсор SQLite
+    :returns: коллбэк-функция для расписания группы
     """
 
     def callback(timetable: Timetable[Lesson], group: str, week: Week) -> None:
@@ -140,7 +146,7 @@ def sqlite_callback(cur: sqlite3.Cursor) -> TimetableCallback:
                 )
 
                 if not __debug__:
-                    cur.executemany(sql, list(data))
+                    cur.executemany(sql, data)
                 else:
                     for lesson in data:
                         logger.debug("Добавляю новую запись в таблицу lesson: %s", lesson)
@@ -159,6 +165,9 @@ def sqlite_callback(cur: sqlite3.Cursor) -> TimetableCallback:
 def sqlite_teacher_callback(cur: sqlite3.Cursor) -> TeacherTimetableCallback:
     """
     Добавляет информацию о преподавателе в расписание в базе данных.
+
+    :param cur: курсор SQLite
+    :returns: коллбэк-функция для расписания преподавателя
     """
 
     def callback(timetable: Timetable[list[Lesson]], teacher: Teacher, week: Week) -> None:
