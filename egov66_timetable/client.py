@@ -10,6 +10,7 @@ import json
 import logging
 import random
 import string
+import time
 import uuid
 from collections import defaultdict
 from typing import Literal, NoReturn
@@ -18,7 +19,10 @@ from urllib.parse import ParseResult as URLParseResult, urlparse
 import httpx
 from bs4 import BeautifulSoup
 
-from egov66_timetable.exceptions import InitialDataNotFound
+from egov66_timetable.exceptions import (
+    InitialDataNotFound,
+    NetworkError,
+)
 from egov66_timetable.types import (
     Lesson,
     LessonData,
@@ -131,7 +135,8 @@ class Client:
                 case _:
                     logger.warning("Некорректное переименование: %s", alias)
 
-    def _call_livewire_method(self, method: str, *params: str) -> LivewireData:
+    def _call_livewire_method(self, method: str, *params: str,
+                              max_retries: int = 3) -> LivewireData:
         endpoint = self.instance._replace(path=self.SCHEDULE_ENDPOINT).geturl()
         signature = "".join(
             random.choices(string.ascii_lowercase + string.digits, k=4)
@@ -153,12 +158,20 @@ class Client:
             }]
         }
 
-        return (
-            httpx.post(endpoint, headers=headers, json=payload,
-                       cookies=self.settings["cookies"])
-                 .raise_for_status()
-                 .json()
-        )
+        try:
+            return (
+                httpx.post(endpoint, headers=headers, json=payload,
+                           cookies=self.settings["cookies"])
+                     .raise_for_status()
+                     .json()
+            )
+        except httpx.ReadTimeout:
+            if max_retries <= 0:
+                raise
+            logger.warning("Время ожидания истекло. Повторяю попытку…")
+            time.sleep(1)
+            return self._call_livewire_method(method, *params,
+                                              max_retries=max_retries - 1)
 
     def _perform_data_update(self, method: str, *params: str) -> None:
         diff = self._call_livewire_method(method, *params)
@@ -181,12 +194,21 @@ class Client:
     def _go_forward(self) -> None:
         self._perform_data_update("addWeek")
 
-    def _fetch_initial_data(self) -> None:
+    def _fetch_initial_data(self, *, max_retries: int = 3) -> None:
         schedule_url = self.instance._replace(path=self.SCHEDULE_PAGE).geturl()
-        response = (
-            httpx.get(schedule_url,
-                      cookies=self.settings["cookies"]).raise_for_status()
-        )
+        try:
+            response = (
+                httpx.get(
+                    schedule_url,
+                    cookies=self.settings["cookies"]
+                ).raise_for_status()
+            )
+        except httpx.ReadTimeout:
+            if max_retries <= 0:
+                raise
+            logger.warning("Время ожидания истекло. Повторяю попытку…")
+            time.sleep(1)
+            return self._fetch_initial_data(max_retries=max_retries - 1)
 
         self.settings["cookies"]["edinyi_lk_session"] = (
             response.cookies["edinyi_lk_session"]
@@ -290,7 +312,10 @@ class Client:
 
     def _fetch_events(self, search: str, *, offset: int) -> Events:
         if self._compute_params_hash(search=search, offset=offset) != self._params_hash:
-            self.fetch_timetable(search, offset=offset)
+            try:
+                self.fetch_timetable(search, offset=offset)
+            except httpx.ReadTimeout as err:
+                raise NetworkError from err
 
         events = {}
         if self._has_timetable:

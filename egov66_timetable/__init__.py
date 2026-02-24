@@ -8,9 +8,11 @@
 
 import locale
 import logging
+from collections import defaultdict
 from collections.abc import Callable
 
 from egov66_timetable.client import Client, TeacherClient
+from egov66_timetable.exceptions import NetworkError
 from egov66_timetable.types import (
     Lesson,
     Teacher,
@@ -29,8 +31,10 @@ type TeacherTimetableCallback = Callable[[Timetable[list[Lesson]], Teacher, Week
 logger = logging.getLogger(__name__)
 
 
-def get_timetable(groups: str | list[str], callbacks: list[TimetableCallback],
-                  *, settings: Settings, offset_range: range = range(1)) -> None:
+def get_timetable(
+    groups: str | list[str], callbacks: list[TimetableCallback], *,
+    settings: Settings, offset_range: range = range(1)
+) -> dict[int, list[str]]:
     """
     Получает расписание и вызывает коллбэк-функции.
 
@@ -39,6 +43,8 @@ def get_timetable(groups: str | list[str], callbacks: list[TimetableCallback],
     :param settings: настройки
     :param offset_range: интервал смещений относительно текущей недели (``-1`` —
         предыдущая неделя, ``+1`` — следующая)
+    :returns: входные параметры, которые не были обработаны из-за ошибок, в виде
+        словаря, где ключ — смещение, а значение — список групп.
     """
 
     # Выводить дни недели в русской локали
@@ -49,20 +55,29 @@ def get_timetable(groups: str | list[str], callbacks: list[TimetableCallback],
 
     current_week = get_current_week()
     client = Client(settings)
+    failures: defaultdict[int, list[str]] = defaultdict(list)
     for offset in offset_range:
         week = current_week + offset
         for group in groups:
             logger.info("Загрузка расписания для группы %s на неделю %s",
                         group, week.week_id)
-            timetable = client.make_timetable(group, offset=offset)
+            try:
+                timetable = client.make_timetable(group, offset=offset)
+            except NetworkError:
+                logger.error("Ошибка сети")
+                failures[offset].append(group)
+                continue
+
             for callback in callbacks:
                 callback(timetable, group, week)
+
+    return failures
 
 
 def get_teacher_timetable(teachers: Teacher | list[Teacher],
                           callbacks: list[TeacherTimetableCallback], *,
                           settings: Settings,
-                          offset_range: range = range(1)) -> None:
+                          offset_range: range = range(1)) -> dict[int, list[Teacher]]:
     """
     Получает расписание и вызывает коллбэк-функции.
 
@@ -71,6 +86,8 @@ def get_teacher_timetable(teachers: Teacher | list[Teacher],
     :param settings: настройки
     :param offset_range: интервал смещений относительно текущей недели (``-1`` —
         предыдущая неделя, ``+1`` — следующая)
+    :returns: входные параметры, которые не были обработаны из-за ошибок, в виде
+        словаря, где ключ — смещение, а значение — список преподавателей.
     """
 
     # Выводить дни недели в русской локали
@@ -81,14 +98,23 @@ def get_teacher_timetable(teachers: Teacher | list[Teacher],
 
     current_week = get_current_week()
     client = TeacherClient(settings)
+    failures: defaultdict[int, list[Teacher]] = defaultdict(list)
     for offset in offset_range:
         week = current_week + offset
         for teacher in teachers:
             logger.info("Загрузка расписания для %s на неделю %s",
                         teacher.initials, week.week_id)
-            timetable = client.make_teacher_timetable(teacher.id, offset=offset)
+            try:
+                timetable = client.make_teacher_timetable(teacher.id, offset=offset)
+            except NetworkError:
+                logger.error("Ошибка сети")
+                failures[offset].append(teacher)
+                continue
+
             for callback in callbacks:
                 callback(timetable, teacher, week)
+
+    return failures
 
 
 def write_timetable(groups: str | list[str], *,

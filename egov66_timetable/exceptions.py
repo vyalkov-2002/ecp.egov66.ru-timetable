@@ -24,3 +24,9 @@ class InitialDataNotFound(Exception):
     """
     Эта ошибка означает, что на странице не удалось найти начальные данные.
     """
+
+
+class NetworkError(Exception):
+    """
+    Ошибка сети.
+    """
