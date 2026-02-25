@@ -23,11 +23,11 @@ from egov66_timetable.utils import (
 logger = logging.getLogger(__name__)
 
 
-def create_db(cur: sqlite3.Cursor | sqlite3.Connection) -> sqlite3.Cursor:
+def create_db(conn: sqlite3.Connection) -> sqlite3.Cursor:
     """
     Создает базу данных и индексы.
 
-    :param cur: курсор SQLite
+    :param conn: база данных SQLite
     :returns: курсор SQLite
     """
 
@@ -36,13 +36,17 @@ def create_db(cur: sqlite3.Cursor | sqlite3.Connection) -> sqlite3.Cursor:
         .joinpath("schema.sql")
         .read_text()
     )
-    return cur.executescript(sql_script)
+
+    with conn:
+        return conn.executescript(sql_script)
 
 
-def load_timetable(cur: sqlite3.Cursor, *, group: str, week: Week | str) -> Timetable[Lesson]:
+def load_timetable(cur: sqlite3.Cursor | sqlite3.Connection, *,
+                   group: str, week: Week | str) -> Timetable[Lesson]:
     """
     Загружает расписание из базы данных.
 
+    :param cur: курсор или база данных SQLite
     :param group: номер группы
     :param week: неделя
     :returns: расписание на неделю для группы
@@ -50,7 +54,7 @@ def load_timetable(cur: sqlite3.Cursor, *, group: str, week: Week | str) -> Time
 
     week_id = week.week_id if isinstance(week, Week) else week
 
-    cur.execute(
+    cur = cur.execute(
         """
         SELECT
           id, classroom, name, day_num, lesson_num
@@ -63,7 +67,7 @@ def load_timetable(cur: sqlite3.Cursor, *, group: str, week: Week | str) -> Time
     )
 
     result: Timetable[Lesson] = [{} for _ in range(7)]
-    for lesson_id, classroom, name, day_num, lesson_num in cur.fetchall():
+    for lesson_id, classroom, name, day_num, lesson_num in cur:
         result[day_num][lesson_num] = (lesson_id, (classroom, name))
 
     # Если на выходных ничего нет, удаляем лишние дни.
@@ -75,11 +79,11 @@ def load_timetable(cur: sqlite3.Cursor, *, group: str, week: Week | str) -> Time
     return get_type_adapter(Timetable[Lesson]).validate_python(result)
 
 
-def sqlite_callback(cur: sqlite3.Cursor) -> TimetableCallback:
+def sqlite_callback(conn: sqlite3.Connection) -> TimetableCallback:
     """
     Записывает расписание в базу данных.
 
-    :param cur: курсор SQLite
+    :param conn: база данных SQLite
     :returns: коллбэк-функция для расписания группы
     """
 
@@ -89,7 +93,7 @@ def sqlite_callback(cur: sqlite3.Cursor) -> TimetableCallback:
 
         for day_num, day in enumerate(timetable):
             # 1. Сначала проверим, нет ли уже в БД расписания на этот день.
-            cur.execute(
+            cur = conn.execute(
                 """
                 SELECT
                   id
@@ -100,7 +104,7 @@ def sqlite_callback(cur: sqlite3.Cursor) -> TimetableCallback:
                 """,
                 [group, week.week_id, day_num]
             )
-            old_lesson_ids: set[str] = {item[0] for item in cur.fetchall()}
+            old_lesson_ids: set[str] = {item[0] for item in cur}
 
             # 2. Получим UUID всех пар на день.
             new_lesson_ids = {lesson[0]: lesson_num
@@ -110,7 +114,7 @@ def sqlite_callback(cur: sqlite3.Cursor) -> TimetableCallback:
             deleted_lesson_ids: set[str] = old_lesson_ids - new_lesson_ids.keys()
             if (num_deleted := len(deleted_lesson_ids)) > 0:
                 total_deleted += num_deleted
-                cur.executemany(
+                conn.executemany(
                     """
                     UPDATE
                       lesson
@@ -146,11 +150,11 @@ def sqlite_callback(cur: sqlite3.Cursor) -> TimetableCallback:
                 )
 
                 if not __debug__:
-                    cur.executemany(sql, data)
+                    conn.executemany(sql, data)
                 else:
                     for lesson in data:
                         logger.debug("Добавляю новую запись в таблицу lesson: %s", lesson)
-                        cur.execute(sql, lesson)
+                        conn.execute(sql, lesson)
 
         if total_added > 0:
             logger.info("Новых записей в БД: %d", total_added)
@@ -159,14 +163,17 @@ def sqlite_callback(cur: sqlite3.Cursor) -> TimetableCallback:
         if total_added + total_deleted == 0:
             logger.info("Расписание в БД уже актуально")
 
+        # Если все получилось, коммитим изменения.
+        conn.commit()
+
     return callback
 
 
-def sqlite_teacher_callback(cur: sqlite3.Cursor) -> TeacherTimetableCallback:
+def sqlite_teacher_callback(conn: sqlite3.Connection) -> TeacherTimetableCallback:
     """
     Добавляет информацию о преподавателе в расписание в базе данных.
 
-    :param cur: курсор SQLite
+    :param conn: база данных SQLite
     :returns: коллбэк-функция для расписания преподавателя
     """
 
@@ -189,11 +196,13 @@ def sqlite_teacher_callback(cur: sqlite3.Cursor) -> TeacherTimetableCallback:
 
         if not __debug__:
             logger.info("Добавляю информацию о преподавателе в расписание")
-            cur.executemany(sql, list(params))
+            with conn:
+                conn.executemany(sql, list(params))
         else:
             for data in params:
                 logger.debug("Добавляю информацию о преподавателе к "
                              "занятию (%s, %s)", *data[:-2])
-                cur.execute(sql, data)
+                with conn:
+                    conn.execute(sql, data)
 
     return callback
