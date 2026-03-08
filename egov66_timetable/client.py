@@ -165,7 +165,7 @@ class Client:
                      .raise_for_status()
                      .json()
             )
-        except httpx.ReadTimeout:
+        except httpx.TimeoutException:
             if max_retries <= 0:
                 raise
             logger.warning("Время ожидания истекло. Повторяю попытку…")
@@ -203,7 +203,7 @@ class Client:
                     cookies=self.settings["cookies"]
                 ).raise_for_status()
             )
-        except httpx.ReadTimeout:
+        except httpx.TimeoutException:
             if max_retries <= 0:
                 raise
             logger.warning("Время ожидания истекло. Повторяю попытку…")
@@ -314,7 +314,7 @@ class Client:
         if self._compute_params_hash(search=search, offset=offset) != self._params_hash:
             try:
                 self.fetch_timetable(search, offset=offset)
-            except httpx.ReadTimeout as err:
+            except httpx.TimeoutException as err:
                 raise NetworkError from err
 
         events = {}
