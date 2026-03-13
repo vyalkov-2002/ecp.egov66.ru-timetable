@@ -201,7 +201,7 @@ def sqlite_teacher_callback(conn: sqlite3.Connection) -> TeacherTimetableCallbac
         else:
             for data in params:
                 logger.debug("Добавляю информацию о преподавателе к "
-                             "занятию (%s, %s)", *data[:-2])
+                             "занятию (%s, %s)", *data[:-1])
                 with conn:
                     conn.execute(sql, data)
 
