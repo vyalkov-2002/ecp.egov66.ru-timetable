@@ -249,7 +249,7 @@ class Client:
     def _guess_teacher(self, lesson: LessonDict) -> list[str]:
         teachers: list[str] = []
         search: str | None = None  # Фамилия И.О.
-        for teacher in lesson.get("teachers", {}).values():
+        for teacher in dict(lesson.get("teachers", {})).values():
             if isinstance(teacher, str):
                 search = teacher
             elif (fio := teacher.get("fio")) is not None:

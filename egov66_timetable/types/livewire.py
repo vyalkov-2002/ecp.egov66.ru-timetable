@@ -2,7 +2,7 @@
 # SPDX-FileCopyrightText: 2025 Matvey Vyalkov
 # No warranty
 
-from typing import TypedDict
+from typing import Never, TypedDict
 
 from pydantic import ConfigDict, JsonValue, with_config
 
@@ -49,7 +49,7 @@ class LessonDict(TypedDict):
     comment: str | None
 
     #: Преподаватели.
-    teachers: dict[str, TeacherDict | str]
+    teachers: dict[str, TeacherDict | str] | list[Never]
 
     #: Номер недели, начиная с нуля.
     dayWeekNum: int
