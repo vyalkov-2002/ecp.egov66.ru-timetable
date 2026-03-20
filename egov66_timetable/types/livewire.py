@@ -2,11 +2,15 @@
 # SPDX-FileCopyrightText: 2025 Matvey Vyalkov
 # No warranty
 
-from typing import Never, TypedDict
+from typing import Annotated, Never, TypedDict
 
-from pydantic import ConfigDict, JsonValue, with_config
+from pydantic import ConfigDict, GetPydanticSchema, JsonValue, with_config
 
 from egov66_timetable.types import UUID4Str
+
+# Pydantic не работает с typing.Never
+HandleAsNone = GetPydanticSchema(lambda _s, h: h(None))
+type EmptyList = list[Annotated[Never, HandleAsNone]]
 
 type JsonObject = dict[str, JsonValue]
 
@@ -49,7 +53,7 @@ class LessonDict(TypedDict):
     comment: str | None
 
     #: Преподаватели.
-    teachers: dict[str, TeacherDict | str] | list[Never]
+    teachers: dict[str, TeacherDict | str] | EmptyList
 
     #: Номер недели, начиная с нуля.
     dayWeekNum: int
