@@ -4,13 +4,20 @@
 
 from typing import Annotated, Never, TypedDict
 
-from pydantic import ConfigDict, GetPydanticSchema, JsonValue, with_config
+from pydantic import (
+    ConfigDict,
+    Field,
+    GetPydanticSchema,
+    JsonValue,
+    with_config,
+)
 
 from egov66_timetable.types import UUID4Str
 
 # Pydantic не работает с typing.Never
 HandleAsNone = GetPydanticSchema(lambda _s, h: h(None))
-type EmptyList = list[Annotated[Never, HandleAsNone]]
+type EmptyList = Annotated[list[Annotated[Never, HandleAsNone]],
+                           Field(max_length=0)]
 
 type JsonObject = dict[str, JsonValue]
 
