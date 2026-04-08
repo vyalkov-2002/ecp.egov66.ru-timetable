@@ -133,6 +133,19 @@ def sqlite_callback(conn: sqlite3.Connection) -> TimetableCallback:
                                 if lesson_id not in old_lesson_ids}
 
             if (num_added := len(added_lesson_ids)) > 0:
+                # Удалим пары, которые уже были в расписании, но их передвинули
+                # на другой день или другое время в будущем.
+                sql: str = (
+                    f"""
+                    DELETE FROM
+                      lesson
+                    WHERE
+                      id IN ({",".join("?" * len(added_lesson_ids))})
+                      AND group_id = ?
+                    """  # nosec: SQL injection not possible
+                )
+                conn.execute(sql, [*added_lesson_ids, group])
+
                 total_added += num_added
                 data = (
                     [*flatten(day[lesson_num]), group, week.week_id,
@@ -140,7 +153,7 @@ def sqlite_callback(conn: sqlite3.Connection) -> TimetableCallback:
                     for lesson_num in added_lesson_ids.values()
                 )
 
-                sql: str = (
+                sql = (
                     """
                     INSERT INTO
                       lesson(id, classroom, name, group_id, week_id, day_num, lesson_num)
