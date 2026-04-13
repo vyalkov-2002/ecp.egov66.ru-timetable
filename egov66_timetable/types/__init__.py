@@ -1,6 +1,10 @@
 # SPDX-License-Identifier: EUPL-1.2
-# SPDX-FileCopyrightText: 2025 Matvey Vyalkov
+# SPDX-FileCopyrightText: 2025-2026 Matvey Vyalkov
 # No warranty
+
+"""
+Основные типы данных.
+"""
 
 from datetime import date, timedelta
 from functools import cached_property
@@ -117,13 +121,19 @@ class Week:
     """
     Неделя.
 
+    Объект поддерживает операции сложения и вычитания с целыми числами.
+
     :param monday: понедельник
     """
 
+    #: Дата понедельника.
     monday: date
 
     @cached_property
     def sunday(self) -> date:
+        """
+        Дата воскресенья.
+        """
         return self.monday + timedelta(days=6)
 
     @cached_property
@@ -137,6 +147,12 @@ class Week:
 
     @classmethod
     def from_week_id(cls, week_id: str) -> "Week":
+        """
+        Конструктор класса из строки.
+
+        :param week_id: год и номер недели в году (пример: 1970-48)
+        """
+
         year, week_no = [int(x) for x in week_id.split("-")]
         return cls(date.fromisocalendar(year, week_no, 1))
 

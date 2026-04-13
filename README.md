@@ -40,7 +40,7 @@ SPDX-License-Identifier: CC0-1.0
 3. Можно запускать!
 
    ```
-   $ uv run ecp-egov66-timetable 101 1
+   $ ecp-egov66-timetable 101 1
    ```
 Программа получит расписание для группы 101 на следующую неделю и запишет его в статический файл HTML.
 

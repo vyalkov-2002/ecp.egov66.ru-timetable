@@ -22,7 +22,7 @@ from egov66_timetable.types import (
 from egov66_timetable.types.settings import Settings
 from egov66_timetable.utils import get_current_week
 
-__version__ = "0.0.0"
+__version__ = "2026.4.14.0"
 
 # timetable, group, week
 type TimetableCallback = Callable[[Timetable[Lesson], str, Week], None]
@@ -36,7 +36,7 @@ def get_timetable(
     settings: Settings, offset_range: range = range(1)
 ) -> dict[int, list[str]]:
     """
-    Получает расписание и вызывает коллбэк-функции.
+    Получает расписание студентов и вызывает коллбэк-функции.
 
     :param groups: номера групп
     :param callbacks: функции обратного вызова
@@ -79,7 +79,7 @@ def get_teacher_timetable(teachers: Teacher | list[Teacher],
                           settings: Settings,
                           offset_range: range = range(1)) -> dict[int, list[Teacher]]:
     """
-    Получает расписание и вызывает коллбэк-функции.
+    Получает расписание преподавателей и вызывает коллбэк-функции.
 
     :param teachers: список преподавателей
     :param callbacks: функции обратного вызова
@@ -120,7 +120,7 @@ def get_teacher_timetable(teachers: Teacher | list[Teacher],
 def write_timetable(groups: str | list[str], *,
                     settings: Settings, offset_range: range = range(1)) -> None:
     """
-    Получает расписание и записывает его в HTML-файлы.
+    Получает расписание студентов и записывает его в HTML-файлы.
 
     :param groups: номера групп
     :param callbacks: функции обратного вызова

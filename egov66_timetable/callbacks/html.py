@@ -43,14 +43,14 @@ jinja_env = jinja2.Environment(
 
 def load_template() -> jinja2.Template:
     """
-    :returns: шаблон расписания
+    :returns: шаблон расписания студента
     """
     return jinja_env.get_template("week.html.jinja")
 
 
 def load_teacher_template() -> jinja2.Template:
     """
-    :returns: шаблон расписания
+    :returns: шаблон расписания препоодавателя
     """
     return jinja_env.get_template("teacher_week.html.jinja")
 

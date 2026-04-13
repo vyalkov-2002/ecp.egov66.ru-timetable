@@ -10,7 +10,7 @@
 class SessionExpired(Exception):
     """
     Эта ошибка означает, что сеанс завершен и нужно получить новый cookie-файл
-    edinyi_lk_session.
+    ``edinyi_lk_session``.
     """
 
 

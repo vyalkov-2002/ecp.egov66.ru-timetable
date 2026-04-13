@@ -1,6 +1,10 @@
 # SPDX-License-Identifier: EUPL-1.2
-# SPDX-FileCopyrightText: 2025 Matvey Vyalkov
+# SPDX-FileCopyrightText: 2025-2026 Matvey Vyalkov
 # No warranty
+
+"""
+Разнообразные вспомогательные функции.
+"""
 
 import functools
 import json
@@ -100,7 +104,7 @@ def get_current_week() -> Week:
 
 def read_settings() -> Settings:
     """
-    Читает настройки из файла settings.json.
+    Читает настройки из файла :file:`settings.json`.
 
     :returns: настройки
     :raises FileNotFoundError: если файл settings.json не найден
@@ -115,7 +119,7 @@ def read_settings() -> Settings:
 
 def write_settings(settings: Settings) -> None:
     """
-    Записывает настройки в файл settings.json.
+    Записывает настройки в файл :file:`settings.json`.
 
     :param settings: настройки
     """

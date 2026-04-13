@@ -1,6 +1,10 @@
 # SPDX-License-Identifier: EUPL-1.2
-# SPDX-FileCopyrightText: 2025 Matvey Vyalkov
+# SPDX-FileCopyrightText: 2025-2026 Matvey Vyalkov
 # No warranty
+
+"""
+Схемы данных о расписании из личного кабинета.
+"""
 
 from typing import Annotated, Never, TypedDict
 
@@ -31,7 +35,7 @@ class TeacherDict(TypedDict):
     #: UUID объекта.
     id: UUID4Str
 
-    #: Фамилия Имя Отчество
+    #: Фамилия Имя Отчество.
     fio: str | None
 
 

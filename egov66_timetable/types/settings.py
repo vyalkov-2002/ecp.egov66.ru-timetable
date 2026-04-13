@@ -1,6 +1,10 @@
 # SPDX-License-Identifier: EUPL-1.2
-# SPDX-FileCopyrightText: 2025 Matvey Vyalkov
+# SPDX-FileCopyrightText: 2025-2026 Matvey Vyalkov
 # No warranty
+
+"""
+Типы данных для настроек.
+"""
 
 from typing import TypedDict, NotRequired
 

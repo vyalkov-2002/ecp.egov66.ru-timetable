@@ -1,0 +1,33 @@
+# SPDX-FileCopyrightText: 2026 Matvey Vyalkov
+#
+# SPDX-License-Identifier: CC0-1.0
+
+on:
+  workflow_dispatch:
+  push:
+    #branches:
+      #- master
+
+jobs:
+  publish:
+    runs-on: als-tiny
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+      - name: Setup Python
+        uses: actions/setup-uv@cec208311dfd045dd5311c1add060b2062131d57 # v8.0.0
+        with:
+          enable-cache: true
+      - name: Build website
+        run: |
+          uv venv
+          uv pip install . --group docs
+          uv pip install sphinx-notfound-page sphinx-sitemap
+          uv run sphinx-build docs docs/_build
+      - name: Deploy website
+        uses: actions/deploy-pages@v1
+        with:
+          directory: ./docs/_build
