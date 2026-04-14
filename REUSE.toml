@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: CC0-1.0
-# SPDX-FileCopyrightText: 2025 Matvey Vyalkov
+# SPDX-FileCopyrightText: 2025-2026 Matvey Vyalkov
 
 version = 1
 
@@ -7,4 +7,10 @@ version = 1
 path = "tests/data/*.html"
 precedence = "aggregate"
 SPDX-FileCopyrightText = "NONE"
+SPDX-License-Identifier = "CC0-1.0"
+
+[[annotations]]
+path = "docs/img/*"
+precedence = "aggregate"
+SPDX-FileCopyrightText = "Matvey Vyalkov"
 SPDX-License-Identifier = "CC0-1.0"

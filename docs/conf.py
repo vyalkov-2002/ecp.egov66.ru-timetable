@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: CC0-1.0
+# SPDX-FileCopyrightText: 2025-2026 Matvey Vyalkov
+
 # Configuration file for the Sphinx documentation builder.
 #
 # For the full list of built-in configuration values, see the documentation:
@@ -9,7 +12,7 @@
 project = 'ecp.egov66.ru-timetable'
 author = 'Матвей Вялков'
 copyright = f'2026, {author}'
-release = '2026.4.12.0'
+release = '2026.4.14.0'
 
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
