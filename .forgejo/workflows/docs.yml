@@ -17,13 +17,13 @@ jobs:
         uses: actions/checkout@v5
         with:
           fetch-depth: 0
-      - name: Setup Python
+      - name: Setup uv
         uses: actions/setup-uv@cec208311dfd045dd5311c1add060b2062131d57 # v8.0.0
         with:
           enable-cache: true
       - name: Build website
         run: |
-          uv venv
+          uv venv --managed-python
           uv pip install . --group docs
           uv pip install sphinx-notfound-page sphinx-sitemap
           uv run sphinx-build docs docs/_build
